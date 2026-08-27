@@ -151,7 +151,11 @@ class AppController {
       sec.classList.remove('active');
     });
 
-    const targetSection = document.getElementById(`view${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`);
+    const targetSection = document.getElementById(`view${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`)
+      || document.getElementById(`view${tabId.toUpperCase()}`)
+      || document.getElementById(`view${tabId.toLowerCase()}`)
+      || document.getElementById(`view${tabId}`);
+
     if (targetSection) {
       targetSection.classList.add('active');
     }
