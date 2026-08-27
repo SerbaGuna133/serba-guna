@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TB. SERBA GUNA - Sistem Keuangan, Pembukuan Akuntansi & Stok Toko Bangunan</title>
+  <meta name="description" content="Aplikasi manajemen keuangan, stok material, jurnal umum otomatis, buku besar, neraca lajur 10 kolom, laba rugi dan neraca keuangan untuk Toko Bangunan TB. Serba Guna.">
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏗️</text></svg>">
+
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Chart.js (Interactive Analytics) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- SheetJS (Native Excel Export) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Firebase Compat SDKs (Cloud Firestore & Auth) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+
+  <!-- ==================== TOP NAVIGATION HEADER ==================== -->
+  <header class="app-header">
+    <div class="header-container">
+      
+      <!-- Store Brand -->
+      <div class="brand-wrapper" onclick="window.app && window.app.switchTab('dashboard')">
+        <div class="brand-icon">🏗️</div>
+        <div class="brand-info">
+          <h1 id="headerStoreName">TB. SERBA GUNA</h1>
+          <p id="headerStoreTagline">Sistem Akuntansi & Bahan Bangunan</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="app-nav-tabs" id="mainNavTabs">
+        <button class="nav-tab-btn active" data-tab="dashboard" id="tabBtnDashboard">
+          <span>📊</span> Dashboard
+        </button>
+        <button class="nav-tab-btn" data-tab="transactions" id="tabBtnTransactions">
+          <span>💰</span> Buku Kas
+        </button>
+        <button class="nav-tab-btn" data-tab="inventory" id="tabBtnInventory">
+          <span>📦</span> Stok Barang <span class="badge-pill badge-warning" id="navBadgeInventory">0</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="receivables" id="tabBtnReceivables">
+          <span>📑</span> Piutang Bon <span class="badge-pill badge-warning" id="navBadgeReceivables">0</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="payables" id="tabBtnPayables">
+          <span>🤝</span> Hutang Supplier <span class="badge-pill badge-danger" id="navBadgePayables">0</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="journal" id="tabBtnJournal">
+          <span>📖</span> Jurnal Umum
+        </button>
+        <button class="nav-tab-btn" data-tab="ledger" id="tabBtnLedger">
+          <span>📕</span> Buku Besar
+        </button>
+        <button class="nav-tab-btn" data-tab="worksheet" id="tabBtnWorksheet">
+          <span>📑</span> Neraca Lajur
+        </button>
+        <button class="nav-tab-btn" data-tab="reports" id="tabBtnReports">
+          <span>📈</span> Laba Rugi & Neraca
+        </button>
+        <button class="nav-tab-btn" data-tab="coa" id="tabBtnCOA">
+          <span>🏷️</span> Bagan Akun (COA)
+        </button>
+        <button class="nav-tab-btn" data-tab="settings" id="tabBtnSettings">
+          <span>⚙️</span> Pengaturan
+        </button>
+      </nav>
+
+      <!-- Right Header Actions -->
+      <div class="header-actions">
+        <!-- Cloud Status Pill -->
+        <div class="cloud-status-badge offline" id="cloudStatusPill" onclick="window.app && window.app.openFirebaseModal()" title="Status Sinkronisasi Cloud Firebase">
+          <span class="status-dot"></span>
+          <span id="cloudStatusText">Offline</span>
+        </div>
+
+        <!-- Dark/Light Theme Toggle -->
+        <button class="btn-icon-only" id="btnThemeToggle" title="Ganti Tema (Gelap / Terang)">
+          🌓
+        </button>
+
+        <!-- New Transaction CTA -->
+        <button class="btn btn-primary" id="btnOpenNewTxModal">
+          <span>➕</span> Input Transaksi
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ==================== MAIN CONTENT WRAPPER ==================== -->
+  <main class="main-wrapper">
+
+    <!-- HERO BANNER CARD -->
+    <section class="hero-card" id="heroCard">
+      <div class="hero-left">
+        <h2 id="heroTitle"><span>📊</span> Dashboard Akuntansi TB. Serba Guna</h2>
+        <p id="heroSubtitle">Sistem pembukuan berpasangan (Double-Entry), persediaan stok, piutang bon & laporan neraca otomatis.</p>
+      </div>
+      <div class="hero-right">
+        <!-- Filter Periode Global -->
+        <select id="globalPeriodSelect" class="custom-select">
+          <option value="">Semua Periode Transaksi</option>
+          <option value="2026-08" selected>Bulan Ini (Agustus 2026)</option>
+          <option value="2026-07">Juli 2026</option>
+          <option value="2026-06">Juni 2026</option>
+          <option value="2026">Tahun 2026</option>
+        </select>
+
+        <!-- Cetak Laporan Cepat -->
+        <button class="btn btn-outline" id="btnQuickPrintReport" style="color: #fff; border-color: rgba(255,255,255,0.25);">
+          <span>🖨️</span> Cetak Laporan
+        </button>
+
+        <!-- Ekspor Excel -->
+        <button class="btn btn-outline" id="btnQuickExportExcel" style="color: #fff; border-color: rgba(255,255,255,0.25);">
+          <span>📊</span> Ekspor Excel
+        </button>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         VIEW 1: DASHBOARD
+         ========================================== -->
+    <section id="viewDashboard" class="view-section active">
+      <div class="stats-grid">
+        <div class="stat-card accent-emerald">
+          <div class="stat-header">
+            <span class="stat-label">Saldo Kas & Bank</span>
+            <div class="stat-icon">💵</div>
+          </div>
+          <div class="stat-value text-success" id="kpiNetCash">Rp 0</div>
+          <div class="stat-sub">Kas Toko & Bank BCA aktif</div>
+        </div>
+
+        <div class="stat-card accent-blue">
+          <div class="stat-header">
+            <span class="stat-label">Omset Penjualan</span>
+            <div class="stat-icon">🛒</div>
+          </div>
+          <div class="stat-value" id="kpiRevenue">Rp 0</div>
+          <div class="stat-sub">Penjualan tunai, transfer & bon proyek</div>
+        </div>
+
+        <div class="stat-card accent-purple">
+          <div class="stat-header">
+            <span class="stat-label">Nilai Aset Stok Material</span>
+            <div class="stat-icon">📦</div>
+          </div>
+          <div class="stat-value" style="color: var(--purple);" id="kpiInventoryVal">Rp 0</div>
+          <div class="stat-sub" id="kpiLowStockAlert">0 item stok menipis</div>
+        </div>
+
+        <div class="stat-card accent-amber">
+          <div class="stat-header">
+            <span class="stat-label">Laba Bersih Akuntansi</span>
+            <div class="stat-icon">🏆</div>
+          </div>
+          <div class="stat-value text-warning" id="kpiNetProfit">Rp 0</div>
+          <div class="stat-sub">Margin Laba: <span id="kpiProfitMargin" class="font-bold">0%</span></div>
+        </div>
+
+        <div class="stat-card accent-amber" style="cursor: pointer;" onclick="window.app.switchTab('receivables')" title="Lihat daftar piutang bon">
+          <div class="stat-header">
+            <span class="stat-label">Piutang Bon Pelanggan</span>
+            <div class="stat-icon">📑</div>
+          </div>
+          <div class="stat-value text-warning" id="kpiReceivables">Rp 0</div>
+          <div class="stat-sub text-danger" id="kpiOverdueReceivables">⚠️ 0 bon jatuh tempo</div>
+        </div>
+
+        <div class="stat-card accent-red" style="cursor: pointer;" onclick="window.app.switchTab('payables')" title="Lihat hutang distributor">
+          <div class="stat-header">
+            <span class="stat-label">Hutang Distributor</span>
+            <div class="stat-icon">🤝</div>
+          </div>
+          <div class="stat-value text-danger" id="kpiPayables">Rp 0</div>
+          <div class="stat-sub text-danger" id="kpiOverduePayables">⚠️ 0 tempo jatuh tempo</div>
+        </div>
+      </div>
+
+      <!-- Charts Grid -->
+      <div class="charts-grid">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">📈 Tren Arus Kas & Laba Bulanan</h3>
+              <p class="card-subtitle">Komparasi omset penjualan, belanja stok & laba bersih 6 bulan terakhir</p>
+            </div>
+          </div>
+          <div class="chart-canvas-wrap">
+            <canvas id="monthlyTrendChart"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">🧱 Kategori Material Terlaris</h3>
+              <p class="card-subtitle">Distribusi omset penjualan per kategori</p>
+            </div>
+          </div>
+          <div class="chart-canvas-wrap">
+            <canvas id="categoryPieChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Transactions Table Card -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">🕒 Transaksi Penjualan & Pembukuan Terkini</h3>
+            <p class="card-subtitle">Aktivitas penjualan kasir, bon proyek kontraktor, dan kulakan distributor</p>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="window.app.switchTab('transactions')">
+            Lihat Semua Buku Kas ➔
+          </button>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="tableRecentTransactions">
+            <thead>
+              <tr>
+                <th>Tgl / Waktu</th>
+                <th>Jenis & Kategori</th>
+                <th>Keterangan / Transaksi</th>
+                <th>Pelanggan / Supplier</th>
+                <th>Metode</th>
+                <th class="text-right">Total Nilai</th>
+                <th>Status</th>
+                <th class="text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyRecentTransactions"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         VIEW 2: TRANSAKSI & BUKU KAS
+         ========================================== -->
+    <section id="viewTransactions" class="view-section">
+      <div class="table-filter-bar">
+        <div class="filter-left">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="txSearchInput" placeholder="Cari nota, pelanggan, material..." />
+          </div>
+          <select id="txTypeFilter" class="form-select">
+            <option value="all">Semua Jenis Kas</option>
+            <option value="in">📥 Pemasukan / Penjualan</option>
+            <option value="out">📤 Pengeluaran / Belanja</option>
+          </select>
+          <select id="txCategoryFilter" class="form-select">
+            <option value="">Semua Kategori Material</option>
+          </select>
+          <select id="txStatusFilter" class="form-select">
+            <option value="all">Semua Status</option>
+            <option value="lunas">✅ Lunas</option>
+            <option value="tempo">⏳ Tempo / Bon</option>
+          </select>
+        </div>
+
+        <div class="filter-right">
+          <button class="btn btn-outline btn-sm" id="btnExportFilteredExcel">
+            <span>📊</span> Ekspor Excel
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="window.app.openNewTransactionModal()">
+            <span>➕</span> Input Transaksi
+          </button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table" id="tableAllTransactions">
+          <thead>
+            <tr>
+              <th>No. Nota</th>
+              <th>Tanggal</th>
+              <th>Kategori</th>
+              <th>Keterangan / Deskripsi</th>
+              <th>Pelanggan / Supplier</th>
+              <th>Metode Bayar</th>
+              <th class="text-right">Total Nilai</th>
+              <th class="text-right">Sudah Dibayar</th>
+              <th class="text-right">Sisa (Bon)</th>
+              <th>Status</th>
+              <th class="text-center">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyAllTransactions"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         VIEW 3: STOK & INVENTORI BARANG MATERIAL
+         ========================================== -->
+    <section id="viewInventory" class="view-section">
+      <!-- Inventory Valuation Summary -->
+      <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+        <div class="stat-card accent-purple">
+          <div class="stat-header">
+            <span class="stat-label">Total Nilai Aset Stok (HPP)</span>
+            <div class="stat-icon">📦</div>
+          </div>
+          <div class="stat-value" style="color: var(--purple);" id="invValAsset">Rp 0</div>
+          <div class="stat-sub" id="invTotalItemsCount">0 Unit Material di Gudang</div>
+        </div>
+
+        <div class="stat-card accent-blue">
+          <div class="stat-header">
+            <span class="stat-label">Estimasi Nilai Jual Retail</span>
+            <div class="stat-icon">🏷️</div>
+          </div>
+          <div class="stat-value text-info" id="invValRetail">Rp 0</div>
+          <div class="stat-sub">Potensi Nilai Omset Retail</div>
+        </div>
+
+        <div class="stat-card accent-emerald">
+          <div class="stat-header">
+            <span class="stat-label">Potensi Margin Laba</span>
+            <div class="stat-icon">📈</div>
+          </div>
+          <div class="stat-value text-success" id="invValMargin">Rp 0</div>
+          <div class="stat-sub">Selisih Harga Jual - Modal (HPP)</div>
+        </div>
+
+        <div class="stat-card accent-red">
+          <div class="stat-header">
+            <span class="stat-label">Peringatan Stok Menipis</span>
+            <div class="stat-icon">⚠️</div>
+          </div>
+          <div class="stat-value text-danger" id="invValLowCount">0 Barang</div>
+          <div class="stat-sub">Perlu segera dilakukan restock</div>
+        </div>
+      </div>
+
+      <!-- Inventory Filter & Action Bar -->
+      <div class="table-filter-bar">
+        <div class="filter-left">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="invSearchInput" placeholder="Cari nama semen, besi, pasir, pipa..." />
+          </div>
+          <select id="invCategoryFilter" class="form-select">
+            <option value="">Semua Kategori Material</option>
+          </select>
+          <label class="d-flex align-center gap-2 text-sm" style="cursor: pointer;">
+            <input type="checkbox" id="invLowStockOnly" />
+            <span>Tampilkan Hanya Stok Menipis (⚠️ Low Stock)</span>
+          </label>
+        </div>
+        <div class="filter-right">
+          <button class="btn btn-primary btn-sm" id="btnOpenNewProductModal">
+            <span>➕</span> Tambah Barang Material Baru
+          </button>
+        </div>
+      </div>
+
+      <!-- Inventory Table -->
+      <div class="table-responsive">
+        <table class="data-table" id="tableInventory">
+          <thead>
+            <tr>
+              <th>Kode</th>
+              <th>Nama Material Bangunan</th>
+              <th>Kategori</th>
+              <th>Satuan</th>
+              <th class="text-right">Harga Modal (Beli)</th>
+              <th class="text-right">Harga Jual Kasir</th>
+              <th class="text-center">Sisa Stok</th>
+              <th>Status Stok</th>
+              <th>Lokasi Gudang</th>
+              <th class="text-center">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyInventory"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         VIEW 4: BUKU PIUTANG PELANGGAN (BON PROYEK)
+         ========================================== -->
+    <section id="viewReceivables" class="view-section">
+      <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+        <div class="stat-card accent-amber">
+          <div class="stat-header">
+            <span class="stat-label">Total Sisa Piutang Berjalan</span>
+            <div class="stat-icon">📑</div>
+          </div>
+          <div class="stat-value text-warning" id="recSummaryTotal">Rp 0</div>
+          <div class="stat-sub" id="recSummaryCount">0 Transaksi Bon Aktif</div>
+        </div>
+
+        <div class="stat-card accent-red">
+          <div class="stat-header">
+            <span class="stat-label">Piutang Jatuh Tempo (Overdue)</span>
+            <div class="stat-icon">⚠️</div>
+          </div>
+          <div class="stat-value text-danger" id="recSummaryOverdue">0 Bon</div>
+          <div class="stat-sub">Perlu segera dilakukan penagihan</div>
+        </div>
+
+        <div class="stat-card accent-emerald">
+          <div class="stat-header">
+            <span class="stat-label">Piutang Sudah Tertagih (Lunas)</span>
+            <div class="stat-icon">✅</div>
+          </div>
+          <div class="stat-value text-success" id="recSummaryPaid">Rp 0</div>
+          <div class="stat-sub">Kas masuk dari pelunasan bon</div>
+        </div>
+      </div>
+
+      <div class="table-filter-bar">
+        <div class="filter-left">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="recSearchInput" placeholder="Cari nama kontraktor, proyek, no telp..." />
+          </div>
+          <select id="recStatusFilter" class="form-select">
+            <option value="active" selected>Bon Belum Lunas (Aktif)</option>
+            <option value="overdue">⚠️ Lewat Jatuh Tempo</option>
+            <option value="all">Semua Riwayat Piutang</option>
+          </select>
+        </div>
+        <div class="filter-right">
+          <button class="btn btn-primary btn-sm" onclick="window.app.openNewTransactionModal('in', 'piutang')">
+            <span>➕</span> Catat Bon Proyek Baru
+          </button>
+        </div>
+      </div>
+
+      <div class="debt-cards-grid" id="receivablesGrid"></div>
+    </section>
+
+    <!-- ==========================================
+         VIEW 5: BUKU HUTANG SUPPLIER (DISTRIBUTOR)
+         ========================================== -->
+    <section id="viewPayables" class="view-section">
+      <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+        <div class="stat-card accent-purple">
+          <div class="stat-header">
+            <span class="stat-label">Total Hutang Distributor</span>
+            <div class="stat-icon">🤝</div>
+          </div>
+          <div class="stat-value" style="color: var(--purple);" id="paySummaryTotal">Rp 0</div>
+          <div class="stat-sub" id="paySummaryCount">0 Faktur Tempo Aktif</div>
+        </div>
+
+        <div class="stat-card accent-red">
+          <div class="stat-header">
+            <span class="stat-label">Hutang Jatuh Tempo</span>
+            <div class="stat-icon">⚠️</div>
+          </div>
+          <div class="stat-value text-danger" id="paySummaryOverdue">0 Faktur</div>
+          <div class="stat-sub">Jadwal pembayaran tempo pabrik/distributor</div>
+        </div>
+
+        <div class="stat-card accent-emerald">
+          <div class="stat-header">
+            <span class="stat-label">Hutang Sudah Dilunasi</span>
+            <div class="stat-icon">✅</div>
+          </div>
+          <div class="stat-value text-success" id="paySummaryPaid">Rp 0</div>
+          <div class="stat-sub">Kas keluar untuk pelunasan faktur</div>
+        </div>
+      </div>
+
+      <div class="table-filter-bar">
+        <div class="filter-left">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="paySearchInput" placeholder="Cari nama pabrik, distributor semen/besi..." />
+          </div>
+          <select id="payStatusFilter" class="form-select">
+            <option value="active" selected>Faktur Belum Lunas (Aktif)</option>
+            <option value="overdue">⚠️ Lewat Jatuh Tempo</option>
+            <option value="all">Semua Riwayat Hutang</option>
+          </select>
+        </div>
+        <div class="filter-right">
+          <button class="btn btn-primary btn-sm" onclick="window.app.openNewTransactionModal('out', 'hutang')">
+            <span>➕</span> Catat Belanja Tempo Distributor
+          </button>
+        </div>
+      </div>
+
+      <div class="debt-cards-grid" id="payablesGrid"></div>
+    </section>
+
+    <!-- ==========================================
+         VIEW 6: JURNAL UMUM (GENERAL JOURNAL)
+         ========================================== -->
+    <section id="viewJournal" class="view-section">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">📖 Jurnal Umum (General Journal - Double Entry)</h3>
+            <p class="card-subtitle">Pencatatan akuntansi otomatis debit & kredit untuk setiap transaksi keuangan</p>
+          </div>
+          <div class="d-flex align-center gap-2">
+            <button class="btn btn-outline btn-sm" id="btnExportJournalsExcel">
+              <span>📊</span> Ekspor Excel Jurnal
+            </button>
+            <button class="btn btn-primary btn-sm" id="btnOpenManualJournalModal">
+              <span>➕</span> Jurnal Penyesuaian Manual
+            </button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table" id="tableJournals">
+            <thead>
+              <tr>
+                <th style="width: 110px;">Tanggal</th>
+                <th style="width: 130px;">No. Bukti</th>
+                <th style="width: 90px;">Kode Akun</th>
+                <th>Nama Akun & Keterangan Transaksi</th>
+                <th class="text-right" style="width: 150px;">Debit (Rp)</th>
+                <th class="text-right" style="width: 150px;">Kredit (Rp)</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyJournals"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         VIEW 7: BUKU BESAR (GENERAL LEDGER)
+         ========================================== -->
+    <section id="viewLedger" class="view-section">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">📕 Buku Besar (General Ledger - T-Account)</h3>
+            <p class="card-subtitle">Pengelompokan mutasi debit, kredit dan saldo berjalan untuk setiap akun COA</p>
+          </div>
+          <div class="d-flex align-center gap-2">
+            <select id="ledgerAccountSelect" class="form-select">
+              <option value="all">Semua Akun Buku Besar</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="ledgerContainer">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         VIEW 8: NERACA LAJUR 10 KOLOM (WORKSHEET)
+         ========================================== -->
+    <section id="viewWorksheet" class="view-section">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">📑 Neraca Lajur 10 Kolom (Accounting Worksheet)</h3>
+            <p class="card-subtitle">Neraca Saldo, Penyesuaian, Saldo Disesuaikan, Laba Rugi, dan Neraca Akhir Otomatis</p>
+          </div>
+          <div class="d-flex align-center gap-2">
+            <button class="btn btn-outline btn-sm" id="btnExportWorksheetExcel">
+              <span>📊</span> Download Excel Neraca Lajur
+            </button>
+            <button class="btn btn-primary btn-sm" id="btnPrintWorksheetReport">
+              <span>🖨️</span> Cetak Neraca Lajur
+            </button>
+          </div>
+        </div>
+
+        <div class="worksheet-table-wrap">
+          <table class="worksheet-table" id="tableWorksheet10">
+            <thead>
+              <tr>
+                <th rowspan="2" style="width: 70px;">Kode</th>
+                <th rowspan="2" style="min-width: 180px; text-align: left;">Nama Akun</th>
+                <th colspan="2">Neraca Saldo</th>
+                <th colspan="2">Penyesuaian</th>
+                <th colspan="2">Neraca Disesuaikan</th>
+                <th colspan="2">Laba Rugi</th>
+                <th colspan="2">Neraca Akhir</th>
+              </tr>
+              <tr>
+                <th style="width: 100px;">Debit</th>
+                <th style="width: 100px;">Kredit</th>
+                <th style="width: 90px;">Debit</th>
+                <th style="width: 90px;">Kredit</th>
+                <th style="width: 100px;">Debit</th>
+                <th style="width: 100px;">Kredit</th>
+                <th style="width: 100px;">Debit</th>
+                <th style="width: 100px;">Kredit</th>
+                <th style="width: 100px;">Debit</th>
+                <th style="width: 100px;">Kredit</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyWorksheet10"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         VIEW 9: LAPORAN (LABA RUGI & NERACA KEUANGAN)
+         ========================================== -->
+    <section id="viewReports" class="view-section">
+      <!-- 1. Laba Rugi Komprehensif -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">📈 1. Laporan Laba Rugi (Income Statement)</h3>
+            <p class="card-subtitle" id="reportPeriodSubtitle">Analisis Pendapatan Penjualan Material, HPP, dan Beban Operasional</p>
+          </div>
+          <div class="d-flex align-center gap-2">
+            <button class="btn btn-outline btn-sm" id="btnPrintFullReport">
+              <span>🖨️</span> Cetak Laba Rugi PDF
+            </button>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;" class="report-grid-cols">
+          <div>
+            <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--success); margin-bottom: 0.75rem; border-bottom: 2px solid var(--success); padding-bottom: 0.4rem;">
+              📥 PENDAPATAN PENJUALAN
+            </h4>
+            <table class="data-table">
+              <tbody id="tbodyReportRevenue"></tbody>
+            </table>
+          </div>
+
+          <div>
+            <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--danger); margin-bottom: 0.75rem; border-bottom: 2px solid var(--danger); padding-bottom: 0.4rem;">
+              📤 HPP & BEBAN OPERASIONAL
+            </h4>
+            <table class="data-table">
+              <tbody id="tbodyReportExpense"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style="margin-top: 1.25rem; background: var(--bg-subtle); border-radius: var(--radius-lg); padding: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; border: 1px solid var(--border-color);">
+          <div>
+            <div style="font-size: 0.78rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted);">Hasil Laba Bersih Toko (Net Profit)</div>
+            <div style="font-size: 1.7rem; font-weight: 800; color: var(--text-main);" id="reportNetProfitVal">Rp 0</div>
+          </div>
+          <div class="d-flex align-center gap-2">
+            <div class="badge badge-success" style="font-size: 0.85rem; padding: 0.45rem 0.85rem;" id="reportMarginVal">Margin: 0%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Neraca Keuangan (Balance Sheet) -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">⚖️ 2. Laporan Neraca Keuangan (Balance Sheet)</h3>
+            <p class="card-subtitle">Keseimbangan posisi Aset (Aktiva) dengan Kewajiban & Ekuitas Modal (Pasiva)</p>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btnPrintBalanceSheetPDF">
+            <span>🖨️</span> Cetak Neraca PDF
+          </button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;" class="report-grid-cols">
+          <!-- Sisi Aset -->
+          <div>
+            <h4 style="font-size: 0.95rem; font-weight: 800; color: var(--info); border-bottom: 2px solid var(--info); padding-bottom: 0.4rem; margin-bottom: 0.6rem;">
+              ASET (AKTIVA)
+            </h4>
+            <div class="table-responsive">
+              <table class="data-table" id="tableBalanceSheetAssets">
+                <tbody id="tbodyBalanceSheetAssets"></tbody>
+              </table>
+            </div>
+            <div style="background: #f0fdf4; border: 2px solid #16a34a; border-radius: 6px; padding: 0.75rem; margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
+              <strong style="color: #166534; font-size: 0.88rem;">TOTAL ASET (AKTIVA):</strong>
+              <strong style="color: #166534; font-size: 1.1rem;" id="bsTotalAssetsVal">Rp 0</strong>
+            </div>
+          </div>
+
+          <!-- Sisi Pasiva -->
+          <div>
+            <h4 style="font-size: 0.95rem; font-weight: 800; color: var(--purple); border-bottom: 2px solid var(--purple); padding-bottom: 0.4rem; margin-bottom: 0.6rem;">
+              KEWAJIBAN & EKUITAS (PASIVA)
+            </h4>
+            <div class="table-responsive">
+              <table class="data-table" id="tableBalanceSheetLiabilities">
+                <tbody id="tbodyBalanceSheetLiabilities"></tbody>
+              </table>
+            </div>
+            <div style="background: #faf5ff; border: 2px solid #8b5cf6; border-radius: 6px; padding: 0.75rem; margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
+              <strong style="color: #6b21a8; font-size: 0.88rem;">TOTAL PASIVA:</strong>
+              <strong style="color: #6b21a8; font-size: 1.1rem;" id="bsTotalLiabilitiesVal">Rp 0</strong>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 1.25rem; text-align: center;" id="bsBalanceStatusBanner"></div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         VIEW 10: BAGAN AKUN (CHART OF ACCOUNTS / COA)
+         ========================================== -->
+    <section id="viewCOA" class="view-section">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">🏷️ Bagan Akun (Chart of Accounts / COA)</h3>
+            <p class="card-subtitle">Daftar kode akun standar akuntansi toko bangunan. Anda dapat menambahkan akun kustom secara bebas.</p>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btnOpenNewCOAModal">
+            <span>➕</span> Tambah Akun Baru Manual
+          </button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table" id="tableCOA">
+            <thead>
+              <tr>
+                <th style="width: 100px;">Kode Akun</th>
+                <th>Nama Akun</th>
+                <th>Kategori Laporan</th>
+                <th>Saldo Normal</th>
+                <th class="text-right">Saldo Awal (Rp)</th>
+                <th style="width: 120px;">Tipe Akun</th>
+                <th class="text-center" style="width: 90px;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyCOA"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         VIEW 11: PENGATURAN TOKO & CLOUD SYNC
+         ========================================== -->
+    <section id="viewSettings" class="view-section">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;" class="settings-grid-cols">
+        
+        <!-- Store Profile Card -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">🏢 Profil & Identitas Toko Bangunan</h3>
+            <p class="card-subtitle">Data ini akan tercantum di Nota Kasir, Faktur Resmi, dan Laporan Keuangan</p>
+          </div>
+          <form id="formStoreProfile">
+            <div class="form-group">
+              <label class="form-label">Nama Toko Bangunan:</label>
+              <input type="text" id="settingStoreName" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Slogan / Keterangan Toko:</label>
+              <input type="text" id="settingStoreTagline" class="form-control" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Alamat Lengkap Toko:</label>
+              <textarea id="settingStoreAddress" class="form-control" rows="2"></textarea>
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">No. Telepon / WhatsApp:</label>
+                <input type="text" id="settingStorePhone" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Email Toko:</label>
+                <input type="email" id="settingStoreEmail" class="form-control" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nama Pemilik / Penanggung Jawab:</label>
+              <input type="text" id="settingStoreOwner" class="form-control" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Catatan Kaki di Nota & Faktur:</label>
+              <textarea id="settingStoreFooter" class="form-control" rows="2"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+              💾 Simpan Profil Toko
+            </button>
+          </form>
+        </div>
+
+        <!-- Firebase Cloud Sync Card -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">☁️ Integrasi Firebase Cloud Firestore</h3>
+            <p class="card-subtitle">Sinkronisasi data real-time menggunakan akun Firebase Toko</p>
+          </div>
+
+          <div style="background: var(--bg-subtle); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem; border: 1px solid var(--border-color);">
+            <div class="d-flex align-center justify-between">
+              <div>
+                <strong style="font-size: 0.9rem;">Status Koneksi:</strong>
+                <div id="settingsCloudStatusLabel" style="font-weight: 700; margin-top: 0.2rem; color: var(--warning);">
+                  🟡 Mode Penyimpanan Lokal (Offline)
+                </div>
+              </div>
+              <button class="btn btn-outline btn-sm" id="btnOpenFirebaseTutorial">
+                📖 Panduan Setup Firebase
+              </button>
+            </div>
+          </div>
+
+          <form id="formFirebaseConfig">
+            <div class="form-group">
+              <label class="form-label">API Key Firebase:</label>
+              <input type="text" id="fbApiKey" class="form-control font-mono" placeholder="AIzaSy..." />
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Project ID:</label>
+                <input type="text" id="fbProjectId" class="form-control font-mono" placeholder="tb-serbaguna-123" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Auth Domain:</label>
+                <input type="text" id="fbAuthDomain" class="form-control font-mono" placeholder="tb-serbaguna-123.firebaseapp.com" />
+              </div>
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Storage Bucket (Opsional):</label>
+                <input type="text" id="fbStorageBucket" class="form-control font-mono" placeholder="tb-serbaguna-123.appspot.com" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">App ID:</label>
+                <input type="text" id="fbAppId" class="form-control font-mono" placeholder="1:123456:web:abcd..." />
+              </div>
+            </div>
+
+            <div class="d-flex align-center gap-2 mt-3">
+              <button type="submit" class="btn btn-success flex-1">
+                🔗 Hubungkan & Sinkronkan ke Firebase
+              </button>
+              <button type="button" class="btn btn-outline" id="btnDisconnectFirebase" title="Putus koneksi Firebase">
+                Putus
+              </button>
+            </div>
+          </form>
+
+          <hr style="border: none; border-top: 1px solid var(--border-color); margin: 1.5rem 0;" />
+
+          <div>
+            <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.5rem;">💾 Cadangan & Pemulihan Data (Backup / Restore)</h4>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+              Unduh cadangan database lengkap (Termasuk Stok & Bagan Akun COA) ke format JSON.
+            </p>
+            <div class="d-flex align-center gap-2 flex-wrap">
+              <button class="btn btn-outline btn-sm" id="btnDownloadBackup">
+                ⬇️ Download Full Backup JSON
+              </button>
+              <label class="btn btn-outline btn-sm" style="cursor: pointer; margin-bottom: 0;">
+                ⬆️ Restore JSON
+                <input type="file" id="inputRestoreJSON" accept=".json" style="display: none;" />
+              </label>
+              <button class="btn btn-danger btn-sm" id="btnClearAllData" style="margin-left: auto;">
+                🗑️ Kosongkan / Nolkan Semua Data
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==========================================
+       MODALS & DIALOGS
+       ========================================== -->
+
+  <!-- 1. MODAL INPUT TRANSAKSI BARU (POS & KASIR) -->
+  <div class="modal-backdrop" id="modalNewTransaction">
+    <div class="modal-content modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalTxTitle">➕ Input Transaksi Penjualan / Pembelian</h3>
+        <button class="btn-icon-only" onclick="window.app.closeModal('modalNewTransaction')">✕</button>
+      </div>
+      <form id="formNewTransaction">
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Jenis Transaksi:</label>
+              <select id="modalTxType" class="form-control" required>
+                <option value="in">📥 Penjualan Kasir (Penjualan Material Bangunan / Ongkir)</option>
+                <option value="out">📤 Pembelian / Kulakan Stok & Biaya Operasional</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Metode Pembayaran:</label>
+              <select id="modalTxPaymentMethod" class="form-control" required>
+                <option value="cash">💵 Tunai / Kasir</option>
+                <option value="transfer">💳 Transfer Bank / QRIS</option>
+                <option value="piutang">📑 Piutang / Bon Proyek (Pelanggan Ngutang)</option>
+                <option value="hutang">🤝 Hutang Supplier (Tempo Kulakan Distributor)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Kategori Material:</label>
+              <select id="modalTxCategory" class="form-control" required></select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Tanggal Transaksi:</label>
+              <input type="date" id="modalTxDate" class="form-control" required />
+            </div>
+
+            <div class="form-group col-span-2">
+              <label class="form-label">Keterangan / Judul Transaksi:</label>
+              <input type="text" id="modalTxTitleInput" class="form-control" placeholder="Contoh: Penjualan Semen Tonasa 50 Sak + Besi 10 SNI" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" id="modalTxContactLabel">Nama Pelanggan / Kontraktor Proyek:</label>
+              <input type="text" id="modalTxContactName" class="form-control" placeholder="Contoh: Pak Haji Bambang (Proyek Ruko)" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">No. Telepon / WhatsApp:</label>
+              <input type="text" id="modalTxPhone" class="form-control" placeholder="0812-xxxx-xxxx" />
+            </div>
+          </div>
+
+          <!-- Dynamic Material Items Builder with Inventory Autocomplete -->
+          <div class="form-group">
+            <div class="d-flex align-center justify-between mb-1">
+              <label class="form-label" style="margin-bottom: 0;">Rincian Barang Material (Otomatis Potong / Tambah Stok):</label>
+              <button type="button" class="btn btn-outline btn-sm" id="btnAddItemRow">
+                <span>➕</span> Tambah Baris Material
+              </button>
+            </div>
+            <div class="items-builder-wrap" id="itemsBuilderContainer"></div>
+          </div>
+
+          <div class="form-grid" style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div class="form-group">
+              <label class="form-label">Total Nilai Transaksi (Rp):</label>
+              <input type="number" id="modalTxAmount" class="form-control font-bold" min="0" step="100" placeholder="0" required />
+            </div>
+            <div class="form-group" id="groupPaidAmount">
+              <label class="form-label" id="labelPaidAmount">Jumlah Sudah Dibayar / DP (Rp):</label>
+              <input type="number" id="modalTxPaidAmount" class="form-control font-semibold" min="0" step="100" placeholder="0" />
+            </div>
+            <div class="form-group" id="groupDueDate" style="display: none;">
+              <label class="form-label">Tanggal Jatuh Tempo Pelunasan:</label>
+              <input type="date" id="modalTxDueDate" class="form-control" />
+            </div>
+            <div class="form-group" id="groupDebtCalc" style="display: none;">
+              <label class="form-label">Sisa Tagihan (Bon / Hutang):</label>
+              <div id="modalTxDebtDisplay" class="font-bold text-danger" style="font-size: 1.1rem; padding-top: 0.35rem;">Rp 0</div>
+            </div>
+          </div>
+
+          <div class="form-group mt-3">
+            <label class="form-label">Catatan Tambahan / Alamat Kirim Armada:</label>
+            <textarea id="modalTxNotes" class="form-control" rows="2" placeholder="Catatan alamat pengiriman truk, termin proyek, dll..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="window.app.closeModal('modalNewTransaction')">Batal</button>
+          <button type="submit" class="btn btn-primary">💾 Simpan & Cetak Nota</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. MODAL TAMBAH BARANG / MASTER STOK -->
+  <div class="modal-backdrop" id="modalNewProduct">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalProductTitle">📦 Tambah Master Barang Material</h3>
+        <button class="btn-icon-only" onclick="window.app.closeModal('modalNewProduct')">✕</button>
+      </div>
+      <form id="formNewProduct">
+        <input type="hidden" id="modalProdId" />
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Nama Barang / Material:</label>
+            <input type="text" id="modalProdName" class="form-control" placeholder="Contoh: Semen Gresik 50kg / Besi 10 SNI" required />
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Kategori Material:</label>
+              <select id="modalProdCategory" class="form-control" required></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Satuan:</label>
+              <input type="text" id="modalProdUnit" class="form-control" placeholder="Sak / Batang / Lembar / Truk / Pcs" required />
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Harga Modal / Beli (HPP):</label>
+              <input type="number" id="modalProdBuyPrice" class="form-control" min="0" step="100" placeholder="0" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Harga Jual Kasir (Rp):</label>
+              <input type="number" id="modalProdSellPrice" class="form-control font-bold" min="0" step="100" placeholder="0" required />
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Jumlah Stok Awal:</label>
+              <input type="number" id="modalProdStock" class="form-control" min="0" step="any" placeholder="0" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Batas Minimum Alert Stok:</label>
+              <input type="number" id="modalProdMinStock" class="form-control" min="0" placeholder="5" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Lokasi Penempatan Gudang / Rak:</label>
+            <input type="text" id="modalProdLocation" class="form-control" placeholder="Contoh: Gudang Utama A1 / Rak Besi B2" />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="window.app.closeModal('modalNewProduct')">Batal</button>
+          <button type="submit" class="btn btn-primary">💾 Simpan Data Barang</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. MODAL TAMBAH AKUN COA BARU (MANUAL) -->
+  <div class="modal-backdrop" id="modalNewCOA">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">🏷️ Tambah Akun Bagan Akun (COA) Manual</h3>
+        <button class="btn-icon-only" onclick="window.app.closeModal('modalNewCOA')">✕</button>
+      </div>
+      <form id="formNewCOA">
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Kode Akun:</label>
+              <input type="text" id="modalCOACode" class="form-control font-mono font-bold" placeholder="Contoh: 1106 / 6106" required />
+              <div class="form-help">1xxx = Aset, 2xxx = Kewajiban, 3xxx = Modal, 4xxx = Pendapatan, 5xxx = HPP, 6xxx = Beban</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Kategori Laporan:</label>
+              <select id="modalCOACategory" class="form-control" required>
+                <option value="aset_lancar">Aset Lancar (Aktiva)</option>
+                <option value="aset_tetap">Aset Tetap (Aktiva)</option>
+                <option value="kewajiban_lancar">Kewajiban / Hutang Lancar</option>
+                <option value="ekuitas">Ekuitas / Modal</option>
+                <option value="pendapatan">Pendapatan Penjualan / Usaha</option>
+                <option value="hpp">Harga Pokok Penjualan (HPP)</option>
+                <option value="beban_operasional">Beban Operasional Toko</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Nama Akun Akuntansi:</label>
+            <input type="text" id="modalCOAName" class="form-control" placeholder="Contoh: Kas Kecil Cabang 2 / Beban Promosi Toko" required />
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Saldo Normal:</label>
+              <select id="modalCOANormal" class="form-control" required>
+                <option value="debit">Debit (Dr)</option>
+                <option value="kredit">Kredit (Cr)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Saldo Awal (Rp):</label>
+              <input type="number" id="modalCOAOpening" class="form-control" min="0" step="1000" placeholder="0" />
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="window.app.closeModal('modalNewCOA')">Batal</button>
+          <button type="submit" class="btn btn-primary">💾 Simpan Akun COA</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. MODAL JURNAL PENYESUAIAN MANUAL -->
+  <div class="modal-backdrop" id="modalManualJournal">
+    <div class="modal-content modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title">📖 Input Jurnal Penyesuaian Manual (Double-Entry)</h3>
+        <button class="btn-icon-only" onclick="window.app.closeModal('modalManualJournal')">✕</button>
+      </div>
+      <form id="formManualJournal">
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Tanggal Jurnal:</label>
+              <input type="date" id="modalJrnDate" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">No. Bukti / Voucher:</label>
+              <input type="text" id="modalJrnVoucher" class="form-control font-mono" placeholder="JV-202608-01" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Deskripsi / Keterangan Jurnal:</label>
+            <input type="text" id="modalJrnDesc" class="form-control" placeholder="Contoh: Penyesuaian modal awal / Beban penyusutan armada truk" required />
+          </div>
+
+          <div class="form-group">
+            <div class="d-flex align-center justify-between mb-1">
+              <label class="form-label" style="margin-bottom: 0;">Baris Akun Jurnal (Debit & Kredit Wajib Seimbang):</label>
+              <button type="button" class="btn btn-outline btn-sm" id="btnAddJournalLine">
+                <span>➕</span> Tambah Baris Akun
+              </button>
+            </div>
+            <div id="journalLinesContainer" class="items-builder-wrap"></div>
+          </div>
+
+          <div style="background: var(--bg-subtle); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <span class="text-sm">Total Debit: <strong id="modalJrnTotDebit">Rp 0</strong></span> | 
+              <span class="text-sm">Total Kredit: <strong id="modalJrnTotCredit">Rp 0</strong></span>
+            </div>
+            <div id="modalJrnBalanceBadge"></div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="window.app.closeModal('modalManualJournal')">Batal</button>
+          <button type="submit" class="btn btn-success">✅ Simpan Jurnal</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 5. MODAL BAYAR CICILAN / PELUNASAN -->
+  <div class="modal-backdrop" id="modalRepayment">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalRepayTitle">💵 Catat Pembayaran Cicilan</h3>
+        <button class="btn-icon-only" onclick="window.app.closeModal('modalRepayment')">✕</button>
+      </div>
+      <form id="formRepayment">
+        <input type="hidden" id="repayTxId" />
+        <div class="modal-body">
+          <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; border: 1px solid var(--border-color);">
+            <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Data Bon / Tagihan:</div>
+            <h4 id="repayTxCustomer" style="font-size: 1.05rem; margin: 0.2rem 0; color: var(--text-main);">-</h4>
+            <p id="repayTxTitle" style="font-size: 0.8rem; color: var(--text-muted);">-</p>
+            <div class="d-flex align-center justify-between mt-2 pt-2" style="border-top: 1px dashed var(--border-color);">
+              <span>Sisa Tagihan Saat Ini:</span>
+              <span id="repayTxDebtDisplay" class="text-danger font-bold" style="font-size: 1.15rem;">Rp 0</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Nominal Pembayaran Cicilan (Rp):</label>
+            <input type="number" id="repayAmount" class="form-control font-bold" min="100" step="100" required />
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Tanggal Pembayaran:</label>
+              <input type="date" id="repayDate" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Metode Setoran:</label>
+              <select id="repayMethod" class="form-control">
+                <option value="cash">💵 Tunai Kasir</option>
+                <option value="transfer">💳 Transfer Bank / QRIS</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Keterangan / Catatan Cicilan:</label>
+            <input type="text" id="repayNote" class="form-control" placeholder="Contoh: Cicilan termin ke-2 / Pelunasan bon semen" />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="window.app.closeModal('modalRepayment')">Batal</button>
+          <button type="submit" class="btn btn-success">✅ Simpan Pembayaran</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 6. MODAL PREVIEW NOTA / FAKTUR RESMI CETAK -->
+  <div class="modal-backdrop" id="modalReceiptPreview">
+    <div class="modal-content modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title">🖨️ Cetak Faktur & Nota Resmi Toko Bangunan</h3>
+        <div class="d-flex align-center gap-2">
+          <button class="btn btn-primary btn-sm" onclick="window.print()">
+            <span>🖨️</span> Cetak Sekarang
+          </button>
+          <button class="btn-icon-only" onclick="window.app.closeModal('modalReceiptPreview')">✕</button>
+        </div>
+      </div>
+      <div class="modal-body" id="receiptPreviewContent"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="window.app.closeModal('modalReceiptPreview')">Tutup</button>
+        <button type="button" class="btn btn-primary" onclick="window.print()">🖨️ Cetak Dokumen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. MODAL PREVIEW LAPORAN KEUANGAN RESMI -->
+  <div class="modal-backdrop" id="modalReportPreview">
+    <div class="modal-content modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title">📑 Cetak Laporan Keuangan</h3>
+        <div class="d-flex align-center gap-2">
+          <button class="btn btn-primary btn-sm" onclick="window.print()">
+            <span>🖨️</span> Cetak PDF
+          </button>
+          <button class="btn-icon-only" onclick="window.app.closeModal('modalReportPreview')">✕</button>
+        </div>
+      </div>
+      <div class="modal-body" id="reportPreviewContent"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="window.app.closeModal('modalReportPreview')">Tutup</button>
+        <button type="button" class="btn btn-primary" onclick="window.print()">🖨️ Cetak / Simpan PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. MODAL PANDUAN FIREBASE & GITHUB PAGES -->
+  <div class="modal-backdrop" id="modalFirebaseGuide">
+    <div class="modal-content modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title">📖 Panduan Setup Firebase & GitHub Pages</h3>
+        <button class="btn-icon-only" onclick="window.app.closeModal('modalFirebaseGuide')">✕</button>
+      </div>
+      <div class="modal-body" style="font-size: 0.88rem; line-height: 1.6;">
+        <h4 style="color: var(--primary); margin-bottom: 0.5rem;">🔥 1. Cara Menghubungkan ke Firebase (Cloud Database)</h4>
+        <ol style="padding-left: 1.25rem; margin-bottom: 1.25rem;">
+          <li>Buka <a href="https://console.firebase.google.com/" target="_blank"><strong>Firebase Console</strong></a> login dengan <strong>email toko Anda</strong>.</li>
+          <li>Klik <strong>Add Project</strong>, beri nama misalnya: <code>tb-serbaguna-finance</code>.</li>
+          <li>Pilih menu <strong>Firestore Database</strong> > Klik <strong>Create Database</strong> (Pilih mode <em>Start in test mode</em>).</li>
+          <li>Masuk ke <strong>Project Settings (Ikon Gir)</strong> > Bagian <em>Your apps</em> > Pilih ikon <strong>Web (<code>&lt;/&gt;</code>)</strong>.</li>
+          <li>Salin kode konfigurasi (<code>apiKey</code>, <code>projectId</code>, <code>authDomain</code>, <code>appId</code>).</li>
+          <li>Tempelkan ke menu <strong>Pengaturan > Integrasi Firebase</strong> di aplikasi ini, lalu klik <strong>Hubungkan</strong>!</li>
+        </ol>
+
+        <h4 style="color: var(--primary); margin-bottom: 0.5rem;">🚀 2. Cara Publish Gratis ke GitHub Pages</h4>
+        <ol style="padding-left: 1.25rem; margin-bottom: 1.25rem;">
+          <li>Buka <a href="https://github.com" target="_blank"><strong>GitHub</strong></a> login dengan akun GitHub email toko Anda.</li>
+          <li>Buat repositori baru bernama <code>serba-guna</code> (Pilih <em>Public</em>).</li>
+          <li>Upload semua file di dalam folder <code>Serba-Guna</code> ini ke repositori tersebut.</li>
+          <li>Buka menu <strong>Settings</strong> di repository GitHub > Menu <strong>Pages</strong>.</li>
+          <li>Pada bagian <em>Branch</em>, pilih <strong>main</strong> lalu klik <strong>Save</strong>.</li>
+          <li>Website pembukuan toko bangunan Anda langsung online di: <code>https://username-toko.github.io/serba-guna/</code>!</li>
+        </ol>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" onclick="window.app.closeModal('modalFirebaseGuide')">Saya Mengerti</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- App Scripts in Correct Dependency Order -->
+  <script src="js/sample-data.js"></script>
+  <script src="js/inventory.js"></script>
+  <script src="js/accounting-engine.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/transactions.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

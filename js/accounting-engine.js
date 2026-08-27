@@ -1,0 +1,556 @@
+/**
+ * TB. SERBA GUNA - DOUBLE ENTRY ACCOUNTING ENGINE
+ * Menghasilkan Jurnal Umum Otomatis, Buku Besar, Neraca Lajur 10 Kolom,
+ * Laporan Laba Rugi Formal, dan Neraca Keuangan (Aktiva = Pasiva).
+ */
+
+const STORAGE_KEYS_ACCOUNTING = {
+  COA: "TB_SERBAGUNA_COA",
+  OPENING_BALANCES: "TB_SERBAGUNA_OPENING_BALANCES",
+  MANUAL_JOURNALS: "TB_SERBAGUNA_MANUAL_JOURNALS"
+};
+
+class AccountingEngine {
+  constructor() {
+    this.coa = [];
+    this.openingBalances = {};
+    this.manualJournals = [];
+    this.init();
+  }
+
+  init() {
+    try {
+      const savedCOA = localStorage.getItem(STORAGE_KEYS_ACCOUNTING.COA);
+      if (savedCOA) {
+        this.coa = JSON.parse(savedCOA);
+      } else {
+        this.coa = JSON.parse(JSON.stringify(DEFAULT_COA));
+        this.saveCOA();
+      }
+    } catch (e) {
+      console.warn("Gagal memuat COA:", e);
+      this.coa = JSON.parse(JSON.stringify(DEFAULT_COA));
+    }
+
+    try {
+      const savedOB = localStorage.getItem(STORAGE_KEYS_ACCOUNTING.OPENING_BALANCES);
+      if (savedOB) {
+        this.openingBalances = JSON.parse(savedOB);
+      } else {
+        this.openingBalances = { ...INITIAL_OPENING_BALANCES };
+        this.saveOpeningBalances();
+      }
+    } catch (e) {
+      console.warn("Gagal memuat saldo awal:", e);
+      this.openingBalances = {};
+    }
+
+    try {
+      const savedMJ = localStorage.getItem(STORAGE_KEYS_ACCOUNTING.MANUAL_JOURNALS);
+      if (savedMJ) {
+        this.manualJournals = JSON.parse(savedMJ);
+      } else {
+        this.manualJournals = [];
+      }
+    } catch (e) {
+      console.warn("Gagal memuat jurnal manual:", e);
+      this.manualJournals = [];
+    }
+  }
+
+  saveCOA() {
+    try {
+      localStorage.setItem(STORAGE_KEYS_ACCOUNTING.COA, JSON.stringify(this.coa));
+    } catch (e) {
+      console.error("Gagal simpan COA:", e);
+    }
+  }
+
+  saveOpeningBalances() {
+    try {
+      localStorage.setItem(STORAGE_KEYS_ACCOUNTING.OPENING_BALANCES, JSON.stringify(this.openingBalances));
+    } catch (e) {
+      console.error("Gagal simpan saldo awal:", e);
+    }
+  }
+
+  saveManualJournals() {
+    try {
+      localStorage.setItem(STORAGE_KEYS_ACCOUNTING.MANUAL_JOURNALS, JSON.stringify(this.manualJournals));
+    } catch (e) {
+      console.error("Gagal simpan jurnal manual:", e);
+    }
+  }
+
+  addAccount(accountData) {
+    const existing = this.coa.find(a => a.code === accountData.code);
+    if (existing) {
+      throw new Error(`Kode akun ${accountData.code} sudah digunakan oleh ${existing.name}`);
+    }
+
+    const newAcc = {
+      code: accountData.code.trim(),
+      name: accountData.name.trim(),
+      category: accountData.category || "beban_operasional",
+      normalBalance: accountData.normalBalance || "debit",
+      isCustom: true
+    };
+
+    this.coa.push(newAcc);
+    this.coa.sort((a, b) => a.code.localeCompare(b.code));
+    this.saveCOA();
+
+    if (accountData.openingBalance && Number(accountData.openingBalance) > 0) {
+      this.openingBalances[newAcc.code] = Number(accountData.openingBalance);
+      this.saveOpeningBalances();
+    }
+
+    return newAcc;
+  }
+
+  deleteAccount(code) {
+    const idx = this.coa.findIndex(a => a.code === code);
+    if (idx === -1) return false;
+    if (!this.coa[idx].isCustom) {
+      throw new Error("Akun sistem standar tidak dapat dihapus.");
+    }
+
+    this.coa.splice(idx, 1);
+    delete this.openingBalances[code];
+    this.saveCOA();
+    this.saveOpeningBalances();
+    return true;
+  }
+
+  getAccount(code) {
+    return this.coa.find(a => a.code === code) || {
+      code,
+      name: `Akun #${code}`,
+      category: "beban_operasional",
+      normalBalance: "debit"
+    };
+  }
+
+  generateJournalsFromTransactions(transactions = []) {
+    const autoJournals = [];
+
+    transactions.forEach(tx => {
+      const date = tx.date;
+      const voucher = tx.id;
+      const desc = tx.title + (tx.customer ? ` (${tx.customer})` : tx.supplier ? ` (${tx.supplier})` : '');
+      const amount = Number(tx.amount) || 0;
+      const paid = Number(tx.paidAmount) || 0;
+      const debt = Number(tx.debtAmount) || 0;
+      const cogs = Number(tx.cogs) || 0;
+
+      if (tx.type === 'in') {
+        const lines = [];
+
+        if (tx.paymentMethod === 'cash') {
+          lines.push({ accountCode: '1101', debit: amount, credit: 0, desc: 'Penerimaan Kasir Tunai' });
+        } else if (tx.paymentMethod === 'transfer') {
+          lines.push({ accountCode: '1102', debit: amount, credit: 0, desc: 'Penerimaan Transfer Bank' });
+        } else if (tx.paymentMethod === 'piutang') {
+          if (paid > 0) {
+            lines.push({ accountCode: '1101', debit: paid, credit: 0, desc: 'Penerimaan DP Bon' });
+          }
+          if (debt > 0) {
+            lines.push({ accountCode: '1103', debit: debt, credit: 0, desc: 'Piutang Bon Proyek' });
+          }
+        }
+
+        const revenueCode = tx.category === 'ongkir' ? '4201' : '4101';
+        lines.push({ accountCode: revenueCode, debit: 0, credit: amount, desc: 'Pendapatan Penjualan' });
+
+        if (cogs > 0 && tx.category !== 'ongkir') {
+          lines.push({ accountCode: '5101', debit: cogs, credit: 0, desc: 'Beban Pokok Penjualan (HPP)' });
+          lines.push({ accountCode: '1104', debit: 0, credit: cogs, desc: 'Pengurangan Stok Persediaan' });
+        }
+
+        autoJournals.push({ id: `JRN-${tx.id}`, date, voucherNo: voucher, desc, lines, isAuto: true });
+
+      } else if (tx.type === 'out') {
+        const lines = [];
+        let expenseAcc = '6199';
+        if (['semen', 'besi', 'pasir', 'kayu', 'cat', 'pipa', 'keramik', 'atap', 'hardware', 'listrik'].includes(tx.category)) {
+          expenseAcc = '1104';
+        } else if (tx.category === 'operasional') {
+          expenseAcc = '6101';
+        } else if (tx.category === 'armada') {
+          expenseAcc = '6102';
+        }
+
+        lines.push({ accountCode: expenseAcc, debit: amount, credit: 0, desc: 'Belanja / Beban Operasional' });
+
+        if (tx.paymentMethod === 'cash') {
+          lines.push({ accountCode: '1101', debit: 0, credit: amount, desc: 'Pengeluaran Kas Toko' });
+        } else if (tx.paymentMethod === 'transfer') {
+          lines.push({ accountCode: '1102', debit: 0, credit: amount, desc: 'Pengeluaran Bank BCA' });
+        } else if (tx.paymentMethod === 'hutang') {
+          if (paid > 0) {
+            lines.push({ accountCode: '1101', debit: 0, credit: paid, desc: 'Pembayaran DP Tempo' });
+          }
+          if (debt > 0) {
+            lines.push({ accountCode: '2101', debit: 0, credit: debt, desc: 'Hutang Usaha Supplier' });
+          }
+        }
+
+        autoJournals.push({ id: `JRN-${tx.id}`, date, voucherNo: voucher, desc, lines, isAuto: true });
+      }
+
+      if (Array.isArray(tx.payments)) {
+        tx.payments.forEach((p, pIdx) => {
+          if (pIdx === 0 && (tx.paymentMethod === 'cash' || tx.paymentMethod === 'transfer')) return;
+          if (pIdx === 0 && (tx.paymentMethod === 'piutang' || tx.paymentMethod === 'hutang')) return;
+
+          const pAmount = Number(p.amount) || 0;
+          if (pAmount <= 0) return;
+
+          const payDate = p.date || tx.date;
+          const payLines = [];
+          const cashAcc = p.method === 'transfer' ? '1102' : '1101';
+
+          if (tx.type === 'in') {
+            payLines.push({ accountCode: cashAcc, debit: pAmount, credit: 0, desc: `Pelunasan Bon: ${p.note || tx.title}` });
+            payLines.push({ accountCode: '1103', debit: 0, credit: pAmount, desc: 'Pengurangan Piutang Bon' });
+          } else {
+            payLines.push({ accountCode: '2101', debit: pAmount, credit: 0, desc: 'Pelunasan Hutang Distributor' });
+            payLines.push({ accountCode: cashAcc, debit: 0, credit: pAmount, desc: `Pembayaran Cicilan: ${p.note || tx.title}` });
+          }
+
+          autoJournals.push({
+            id: `JRN-PAY-${tx.id}-${pIdx}`,
+            date: payDate,
+            voucherNo: p.receiptNo || `PAY-${tx.id}`,
+            desc: `Pembayaran Cicilan: ${tx.title} (${tx.customer || tx.supplier || ''})`,
+            lines: payLines,
+            isAuto: true
+          });
+        });
+      }
+    });
+
+    return autoJournals;
+  }
+
+  addManualJournal(journalData) {
+    let totDebit = 0;
+    let totCredit = 0;
+
+    journalData.lines.forEach(line => {
+      totDebit += (Number(line.debit) || 0);
+      totCredit += (Number(line.credit) || 0);
+    });
+
+    if (Math.abs(totDebit - totCredit) > 1) {
+      throw new Error(`Ayat Jurnal Tidak Seimbang! Total Debit (${totDebit}) harus sama dengan Total Kredit (${totCredit})`);
+    }
+
+    const newJournal = {
+      id: `MJRN-${Date.now()}`,
+      date: journalData.date || new Date().toISOString().split('T')[0],
+      voucherNo: journalData.voucherNo || `JV-${Date.now()}`,
+      desc: journalData.desc || "Jurnal Penyesuaian Manual",
+      lines: journalData.lines,
+      isAuto: false,
+      createdAt: new Date().toISOString()
+    };
+
+    this.manualJournals.unshift(newJournal);
+    this.saveManualJournals();
+    return newJournal;
+  }
+
+  getAllJournals(period = '') {
+    const rawTx = window.transactionStore ? window.transactionStore.transactions : [];
+    const autoJrn = this.generateJournalsFromTransactions(rawTx);
+    const combined = [...autoJrn, ...this.manualJournals];
+
+    combined.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+
+    if (period) {
+      return combined.filter(j => j.date && j.date.startsWith(period));
+    }
+    return combined;
+  }
+
+  getGeneralLedger(period = '') {
+    const journals = this.getAllJournals(period);
+    const ledger = {};
+
+    this.coa.forEach(acc => {
+      const openBal = Number(this.openingBalances[acc.code]) || 0;
+      ledger[acc.code] = {
+        code: acc.code,
+        name: acc.name,
+        category: acc.category,
+        normalBalance: acc.normalBalance,
+        openingBalance: openBal,
+        entries: [],
+        totalDebit: 0,
+        totalCredit: 0,
+        endingBalance: openBal
+      };
+    });
+
+    journals.slice().reverse().forEach(j => {
+      j.lines.forEach(l => {
+        const code = l.accountCode;
+        if (!ledger[code]) {
+          const fallback = this.getAccount(code);
+          ledger[code] = {
+            code: fallback.code,
+            name: fallback.name,
+            category: fallback.category,
+            normalBalance: fallback.normalBalance,
+            openingBalance: 0,
+            entries: [],
+            totalDebit: 0,
+            totalCredit: 0,
+            endingBalance: 0
+          };
+        }
+
+        const deb = Number(l.debit) || 0;
+        const cre = Number(l.credit) || 0;
+        const acc = ledger[code];
+
+        acc.totalDebit += deb;
+        acc.totalCredit += cre;
+
+        let running = acc.openingBalance;
+        if (acc.entries.length > 0) {
+          running = acc.entries[acc.entries.length - 1].runningBalance;
+        }
+
+        if (acc.normalBalance === 'debit') {
+          running = running + deb - cre;
+        } else {
+          running = running + cre - deb;
+        }
+
+        acc.entries.push({
+          date: j.date,
+          voucherNo: j.voucherNo,
+          desc: l.desc || j.desc,
+          debit: deb,
+          credit: cre,
+          runningBalance: running
+        });
+
+        acc.endingBalance = running;
+      });
+    });
+
+    return ledger;
+  }
+
+  getWorksheet10Column(period = '') {
+    const ledger = this.getGeneralLedger(period);
+    const rows = [];
+
+    let totTB_Debit = 0, totTB_Credit = 0;
+    let totAdj_Debit = 0, totAdj_Credit = 0;
+    let totATB_Debit = 0, totATB_Credit = 0;
+    let totIS_Debit = 0, totIS_Credit = 0;
+    let totBS_Debit = 0, totBS_Credit = 0;
+
+    this.coa.forEach(acc => {
+      const data = ledger[acc.code] || {
+        openingBalance: 0, totalDebit: 0, totalCredit: 0, endingBalance: 0, normalBalance: acc.normalBalance
+      };
+
+      const tbDebit = acc.normalBalance === 'debit' ? (data.openingBalance + data.totalDebit) : 0;
+      const tbCredit = acc.normalBalance === 'kredit' ? (data.openingBalance + data.totalCredit) : 0;
+
+      let adjDebit = 0;
+      let adjCredit = 0;
+      this.manualJournals.forEach(mj => {
+        if (!period || mj.date.startsWith(period)) {
+          mj.lines.forEach(l => {
+            if (l.accountCode === acc.code) {
+              adjDebit += (Number(l.debit) || 0);
+              adjCredit += (Number(l.credit) || 0);
+            }
+          });
+        }
+      });
+
+      let netBal = 0;
+      if (acc.normalBalance === 'debit') {
+        netBal = (data.openingBalance + data.totalDebit - data.totalCredit);
+      } else {
+        netBal = (data.openingBalance + data.totalCredit - data.totalDebit);
+      }
+
+      const atbDebit = acc.normalBalance === 'debit' ? Math.max(0, netBal) : 0;
+      const atbCredit = acc.normalBalance === 'kredit' ? Math.max(0, netBal) : 0;
+
+      let isDebit = 0, isCredit = 0;
+      let bsDebit = 0, bsCredit = 0;
+
+      const isNominal = ['pendapatan', 'hpp', 'beban_operasional'].includes(acc.category);
+      if (isNominal) {
+        isDebit = atbDebit;
+        isCredit = atbCredit;
+      } else {
+        bsDebit = atbDebit;
+        bsCredit = atbCredit;
+      }
+
+      totTB_Debit += tbDebit;
+      totTB_Credit += tbCredit;
+      totAdj_Debit += adjDebit;
+      totAdj_Credit += adjCredit;
+      totATB_Debit += atbDebit;
+      totATB_Credit += atbCredit;
+      totIS_Debit += isDebit;
+      totIS_Credit += isCredit;
+      totBS_Debit += bsDebit;
+      totBS_Credit += bsCredit;
+
+      rows.push({
+        code: acc.code,
+        name: acc.name,
+        category: acc.category,
+        tbDebit, tbCredit,
+        adjDebit, adjCredit,
+        atbDebit, atbCredit,
+        isDebit, isCredit,
+        bsDebit, bsCredit
+      });
+    });
+
+    const netIncome = totIS_Credit - totIS_Debit;
+    const balancedIS_Debit = totIS_Debit + (netIncome > 0 ? netIncome : 0);
+    const balancedIS_Credit = totIS_Credit + (netIncome < 0 ? Math.abs(netIncome) : 0);
+    const balancedBS_Debit = totBS_Debit + (netIncome < 0 ? Math.abs(netIncome) : 0);
+    const balancedBS_Credit = totBS_Credit + (netIncome > 0 ? netIncome : 0);
+
+    return {
+      period,
+      rows,
+      totals: {
+        totTB_Debit, totTB_Credit,
+        totAdj_Debit, totAdj_Credit,
+        totATB_Debit, totATB_Credit,
+        totIS_Debit, totIS_Credit,
+        totBS_Debit, totBS_Credit,
+        netIncome,
+        balancedIS_Debit, balancedIS_Credit,
+        balancedBS_Debit, balancedBS_Credit
+      }
+    };
+  }
+
+  getIncomeStatement(period = '') {
+    const ledger = this.getGeneralLedger(period);
+    const revenues = [];
+    const cogs = [];
+    const expenses = [];
+
+    let totalRevenue = 0;
+    let totalCOGS = 0;
+    let totalExpenses = 0;
+
+    this.coa.forEach(acc => {
+      const l = ledger[acc.code];
+      const val = l ? Math.abs(l.endingBalance) : 0;
+      if (val === 0) return;
+
+      if (acc.category === 'pendapatan') {
+        revenues.push({ code: acc.code, name: acc.name, amount: val });
+        totalRevenue += val;
+      } else if (acc.category === 'hpp') {
+        cogs.push({ code: acc.code, name: acc.name, amount: val });
+        totalCOGS += val;
+      } else if (acc.category === 'beban_operasional') {
+        expenses.push({ code: acc.code, name: acc.name, amount: val });
+        totalExpenses += val;
+      }
+    });
+
+    const grossProfit = totalRevenue - totalCOGS;
+    const netProfit = grossProfit - totalExpenses;
+    const netMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : 0;
+
+    return {
+      period,
+      revenues,
+      totalRevenue,
+      cogs,
+      totalCOGS,
+      grossProfit,
+      expenses,
+      totalExpenses,
+      netProfit,
+      netMargin
+    };
+  }
+
+  getBalanceSheet(period = '') {
+    const ledger = this.getGeneralLedger(period);
+    const inc = this.getIncomeStatement(period);
+
+    const currentAssets = [];
+    const fixedAssets = [];
+    const currentLiabilities = [];
+    const equity = [];
+
+    let totalAssets = 0;
+    let totalLiabilities = 0;
+    let totalEquity = 0;
+
+    this.coa.forEach(acc => {
+      const l = ledger[acc.code];
+      let val = l ? l.endingBalance : 0;
+
+      if (acc.category === 'aset_lancar') {
+        currentAssets.push({ code: acc.code, name: acc.name, amount: val });
+        totalAssets += val;
+      } else if (acc.category === 'aset_tetap') {
+        const isContra = acc.normalBalance === 'kredit';
+        fixedAssets.push({ code: acc.code, name: acc.name, amount: val, isContra });
+        totalAssets += isContra ? -val : val;
+      } else if (acc.category === 'kewajiban_lancar') {
+        currentLiabilities.push({ code: acc.code, name: acc.name, amount: val });
+        totalLiabilities += val;
+      } else if (acc.category === 'ekuitas') {
+        equity.push({ code: acc.code, name: acc.name, amount: val });
+        totalEquity += val;
+      }
+    });
+
+    // Masukkan Laba Bersih Berjalan ke Ekuitas
+    equity.push({ code: "3201-CURR", name: "Laba Bersih Tahun Berjalan", amount: inc.netProfit, isCalculated: true });
+    totalEquity += inc.netProfit;
+
+    const totalLiabilitiesAndEquity = totalLiabilities + totalEquity;
+    const difference = totalAssets - totalLiabilitiesAndEquity;
+    const isBalanced = Math.abs(difference) < 1;
+
+    return {
+      period,
+      currentAssets,
+      fixedAssets,
+      totalAssets,
+      currentLiabilities,
+      totalLiabilities,
+      equity,
+      totalEquity,
+      totalLiabilitiesAndEquity,
+      difference,
+      isBalanced
+    };
+  }
+
+  clearAllData() {
+    this.openingBalances = {};
+    this.manualJournals = [];
+    this.saveOpeningBalances();
+    this.saveManualJournals();
+  }
+}
+
+// Global Accounting Engine Instance
+window.accountingEngine = new AccountingEngine();
