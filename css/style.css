@@ -465,6 +465,23 @@ button, input, select, textarea {
   backdrop-filter: blur(8px);
 }
 
+.hero-card .btn-hero,
+.hero-card .btn-outline {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.hero-card .btn-hero:hover,
+.hero-card .btn-outline:hover {
+  background: rgba(255, 255, 255, 0.22) !important;
+  border-color: rgba(255, 255, 255, 0.45) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
 .custom-select option {
   background: #0f172a;
   color: #ffffff;
