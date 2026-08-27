@@ -758,8 +758,8 @@ class AppController {
         <td class="text-right font-mono">${this.store.formatRupiah(t.totBS_Debit)}</td>
         <td class="text-right font-mono">${this.store.formatRupiah(t.totBS_Credit)}</td>
       </tr>
-      <tr style="background: #fffbeb; font-weight: 800;">
-        <td colspan="2" class="text-right" style="color: #b45309;">LABA BERSIH TAHUN BERJALAN</td>
+      <tr class="table-warning-row" style="font-weight: 800;">
+        <td colspan="2" class="text-right" style="color: var(--warning);">LABA BERSIH TAHUN BERJALAN</td>
         <td colspan="6"></td>
         <td class="text-right font-mono text-success">${t.netIncome > 0 ? this.store.formatRupiah(t.netIncome) : '-'}</td>
         <td class="text-right font-mono text-danger">${t.netIncome < 0 ? this.store.formatRupiah(Math.abs(t.netIncome)) : '-'}</td>
@@ -814,7 +814,7 @@ class AppController {
       let expHTML = "";
       if (inc.cogs.length > 0) {
         expHTML += `
-          <tr style="background: #fffbeb;">
+          <tr class="table-warning-row">
             <td colspan="2"><strong>Harga Pokok Penjualan (HPP):</strong></td>
           </tr>
           ${inc.cogs.map(c => `
@@ -826,7 +826,7 @@ class AppController {
         `;
       }
       expHTML += `
-        <tr style="background: var(--bg-subtle);">
+        <tr class="table-section-header">
           <td colspan="2"><strong>Beban Operasional Toko:</strong></td>
         </tr>
         ${inc.expenses.map(e => `
@@ -847,14 +847,14 @@ class AppController {
     const tbodyAssets = document.getElementById('tbodyBalanceSheetAssets');
     if (tbodyAssets) {
       tbodyAssets.innerHTML = `
-        <tr style="background: var(--bg-subtle);"><td colspan="2"><strong>1. Aset Lancar:</strong></td></tr>
+        <tr class="table-section-header"><td colspan="2"><strong>1. Aset Lancar:</strong></td></tr>
         ${bs.currentAssets.map(a => `
           <tr>
             <td style="padding-left: 1.25rem;">${a.code} - ${a.name}</td>
             <td class="text-right font-mono font-semibold">${this.store.formatRupiah(a.amount)}</td>
           </tr>
         `).join('')}
-        <tr style="background: var(--bg-subtle);"><td colspan="2"><strong>2. Aset Tetap:</strong></td></tr>
+        <tr class="table-section-header"><td colspan="2"><strong>2. Aset Tetap:</strong></td></tr>
         ${bs.fixedAssets.map(a => `
           <tr>
             <td style="padding-left: 1.25rem;">${a.code} - ${a.name}</td>
@@ -870,14 +870,14 @@ class AppController {
     const tbodyLiab = document.getElementById('tbodyBalanceSheetLiabilities');
     if (tbodyLiab) {
       tbodyLiab.innerHTML = `
-        <tr style="background: var(--bg-subtle);"><td colspan="2"><strong>1. Kewajiban / Hutang:</strong></td></tr>
+        <tr class="table-section-header"><td colspan="2"><strong>1. Kewajiban / Hutang:</strong></td></tr>
         ${bs.currentLiabilities.map(l => `
           <tr>
             <td style="padding-left: 1.25rem;">${l.code} - ${l.name}</td>
             <td class="text-right font-mono font-semibold text-danger">${this.store.formatRupiah(l.amount)}</td>
           </tr>
         `).join('')}
-        <tr style="background: var(--bg-subtle);"><td colspan="2"><strong>2. Ekuitas / Modal:</strong></td></tr>
+        <tr class="table-section-header"><td colspan="2"><strong>2. Ekuitas / Modal:</strong></td></tr>
         ${bs.equity.map(e => `
           <tr>
             <td style="padding-left: 1.25rem;">${e.code} - ${e.name}</td>

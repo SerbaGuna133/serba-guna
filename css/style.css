@@ -1174,9 +1174,38 @@ button, input, select, textarea {
   padding: 0.45rem 0.6rem;
 }
 
-.table-total-row td {
-  background: #f8fafc;
-  border-top: 2px solid #0f172a;
+.table-total-row td,
+.table-total-row th {
+  background: var(--bg-subtle) !important;
+  color: var(--text-main) !important;
+  border-top: 2px solid var(--border-color) !important;
+  font-weight: 700;
+}
+
+.table-section-header td {
+  background: var(--bg-subtle) !important;
+  color: var(--text-main) !important;
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.3px;
+}
+
+.table-warning-row td {
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: var(--warning) !important;
+  font-weight: 700;
+}
+
+.total-row-highlight td {
+  background: var(--bg-subtle) !important;
+  color: var(--text-main) !important;
+  font-weight: 700;
+}
+
+.balanced-row td {
+  background: rgba(16, 185, 129, 0.14) !important;
+  color: var(--success) !important;
+  font-weight: 800;
 }
 
 .report-sign-wrapper {
