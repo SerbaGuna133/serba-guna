@@ -13,15 +13,17 @@ const DEFAULT_USERS = [
   {
     id: 'usr-admin',
     username: 'admin',
+    email: '133serbaguna@gmail.com',
     password: 'admin123',
     name: 'Hazel Hudaya (Owner)',
-    role: 'owner', // 'owner' (akses penuh) atau 'kasir'
+    role: 'owner',
     phone: '0813-5925-4159',
     createdAt: '2026-08-01'
   },
   {
     id: 'usr-kasir',
     username: 'kasir',
+    email: 'kasir@serbaguna.com',
     password: 'kasir123',
     name: 'Kasir Toko Utama',
     role: 'kasir',
@@ -150,8 +152,10 @@ class AuthManager {
       } catch (fbErr) {
         console.warn("Firebase auth error code:", fbErr.code, fbErr.message);
 
-        // Jika pengguna memasukkan format email (berarti memang akun Firebase), tampilkan error Firebase yang jelas!
-        if (isEmailFormat) {
+        // Jika API Key Firebase salah, jangan blokir total melainkan fallback ke offline
+        if (fbErr.code && (fbErr.code.includes('api-key') || fbErr.message.includes('api-key'))) {
+          console.warn("API Key Firebase pada konfigurasi tidak valid, mencoba kredensial lokal...");
+        } else if (isEmailFormat) {
           let errorMsg = fbErr.message;
           if (fbErr.code === 'auth/user-not-found') {
             errorMsg = `Email "${emailToUse}" belum terdaftar di menu Users Firebase.`;
