@@ -95,88 +95,98 @@
   <div id="appContainer" class="app-container-wrapper" style="display: none;">
 
     <!-- ==================== TOP NAVIGATION HEADER ==================== -->
+    <!-- ==================== TOP NAVIGATION HEADER ==================== -->
     <header class="app-header">
-      <div class="header-container">
-        
-        <!-- Store Brand -->
-        <div class="brand-wrapper" onclick="window.app && window.app.switchTab('dashboard')">
-          <div class="brand-icon">🏗️</div>
-          <div class="brand-info">
-            <h1 id="headerStoreName">TB. SERBA GUNA</h1>
-            <p id="headerStoreTagline">Sistem Akuntansi & Bahan Bangunan</p>
+      <!-- Top Row: Brand & Quick Action Controls -->
+      <div class="header-top-bar">
+        <div class="header-container">
+          
+          <!-- Store Brand -->
+          <div class="brand-wrapper" onclick="window.app && window.app.switchTab('dashboard')">
+            <div class="brand-icon">🏗️</div>
+            <div class="brand-info">
+              <h1 id="headerStoreName">TB. SERBA GUNA</h1>
+              <p id="headerStoreTagline">Pusat Bahan Bangunan & Akuntansi</p>
+            </div>
           </div>
+
+          <!-- Right Header Actions & Quick POS Buttons -->
+          <div class="header-actions">
+            <!-- Quick Action Buttons -->
+            <button class="btn btn-success btn-header-pos" id="btnOpenNewSaleModal" onclick="window.app && window.app.openNewSaleModal()" title="Buka Kasir Penjualan Material (Kas Masuk)">
+              <span>🛒</span> Penjualan Kasir
+            </button>
+            <button class="btn btn-primary btn-header-pos" id="btnOpenNewPurchaseModal" onclick="window.app && window.app.openNewPurchaseModal()" title="Buka Form Kulakan / Tambah Stok Masuk (Kas Keluar)">
+              <span>📥</span> Kulakan Stok
+            </button>
+
+            <div class="header-divider"></div>
+
+            <!-- Active User Badge -->
+            <div class="user-session-badge" id="userSessionBadge" title="Pengguna yang sedang aktif">
+              <span class="user-avatar" id="headerUserAvatar">👑</span>
+              <span class="user-name" id="headerUserName">Owner / Admin</span>
+            </div>
+
+            <!-- Cloud Status Pill -->
+            <div class="cloud-status-badge offline" id="cloudStatusPill" onclick="window.app && window.app.openFirebaseModal()" title="Status Sinkronisasi Cloud Firebase">
+              <span class="status-dot"></span>
+              <span id="cloudStatusText">Offline</span>
+            </div>
+
+            <!-- Dark/Light Theme Toggle -->
+            <button class="btn-icon-only" id="btnThemeToggle" title="Ganti Tema (Gelap / Terang)">
+              🌓
+            </button>
+
+            <!-- Logout Button -->
+            <button class="btn btn-outline btn-sm text-danger" id="btnLogout" title="Kunci / Keluar dari Aplikasi">
+              🚪 Keluar
+            </button>
+          </div>
+
         </div>
+      </div>
 
-        <!-- Navigation Tabs -->
-        <nav class="app-nav-tabs" id="mainNavTabs">
-          <button class="nav-tab-btn active" data-tab="dashboard" id="tabBtnDashboard">
-            <span>📊</span> Dashboard
-          </button>
-          <button class="nav-tab-btn" data-tab="transactions" id="tabBtnTransactions">
-            <span>💰</span> Buku Kas
-          </button>
-          <button class="nav-tab-btn" data-tab="inventory" id="tabBtnInventory">
-            <span>📦</span> Stok Barang <span class="badge-pill badge-warning" id="navBadgeInventory">0</span>
-          </button>
-          <button class="nav-tab-btn" data-tab="receivables" id="tabBtnReceivables">
-            <span>📑</span> Piutang Bon <span class="badge-pill badge-warning" id="navBadgeReceivables">0</span>
-          </button>
-          <button class="nav-tab-btn" data-tab="payables" id="tabBtnPayables">
-            <span>🤝</span> Hutang Supplier <span class="badge-pill badge-danger" id="navBadgePayables">0</span>
-          </button>
-          <button class="nav-tab-btn" data-tab="journal" id="tabBtnJournal">
-            <span>📖</span> Jurnal Umum
-          </button>
-          <button class="nav-tab-btn" data-tab="ledger" id="tabBtnLedger">
-            <span>📕</span> Buku Besar
-          </button>
-          <button class="nav-tab-btn" data-tab="worksheet" id="tabBtnWorksheet">
-            <span>📑</span> Neraca Lajur
-          </button>
-          <button class="nav-tab-btn" data-tab="reports" id="tabBtnReports">
-            <span>📈</span> Laba Rugi & Neraca
-          </button>
-          <button class="nav-tab-btn" data-tab="coa" id="tabBtnCOA">
-            <span>🏷️</span> Bagan Akun (COA)
-          </button>
-          <button class="nav-tab-btn" data-tab="settings" id="tabBtnSettings">
-            <span>⚙️</span> Pengaturan
-          </button>
-        </nav>
-
-        <!-- Right Header Actions -->
-        <div class="header-actions">
-          <!-- Active User Badge -->
-          <div class="user-session-badge" id="userSessionBadge" title="Pengguna yang sedang aktif">
-            <span class="user-avatar" id="headerUserAvatar">👑</span>
-            <span class="user-name" id="headerUserName">Owner / Admin</span>
-          </div>
-
-          <!-- Cloud Status Pill -->
-          <div class="cloud-status-badge offline" id="cloudStatusPill" onclick="window.app && window.app.openFirebaseModal()" title="Status Sinkronisasi Cloud Firebase">
-            <span class="status-dot"></span>
-            <span id="cloudStatusText">Offline</span>
-          </div>
-
-          <!-- Dark/Light Theme Toggle -->
-          <button class="btn-icon-only" id="btnThemeToggle" title="Ganti Tema (Gelap / Terang)">
-            🌓
-          </button>
-
-          <!-- Logout Button -->
-          <button class="btn btn-outline btn-sm text-danger" id="btnLogout" title="Kunci / Keluar dari Aplikasi">
-            🚪 Keluar
-          </button>
-
-          <!-- Quick Action Buttons -->
-          <button class="btn btn-success" id="btnOpenNewSaleModal" onclick="window.app && window.app.openNewSaleModal()" title="Buka Kasir Penjualan Material (Kas Masuk)">
-            <span>🛒</span> Penjualan Kasir
-          </button>
-          <button class="btn btn-primary" id="btnOpenNewPurchaseModal" onclick="window.app && window.app.openNewPurchaseModal()" title="Buka Form Kulakan / Tambah Stok Masuk (Kas Keluar)">
-            <span>📥</span> Kulakan Stok
-          </button>
+      <!-- Bottom Row: Clean Full-Width Navigation Tabs -->
+      <div class="header-nav-bar">
+        <div class="header-container">
+          <nav class="app-nav-tabs" id="mainNavTabs">
+            <button class="nav-tab-btn active" data-tab="dashboard" id="tabBtnDashboard">
+              <span>📊</span> Dashboard
+            </button>
+            <button class="nav-tab-btn" data-tab="transactions" id="tabBtnTransactions">
+              <span>💰</span> Buku Kas
+            </button>
+            <button class="nav-tab-btn" data-tab="inventory" id="tabBtnInventory">
+              <span>📦</span> Stok Barang <span class="badge-pill badge-warning" id="navBadgeInventory">0</span>
+            </button>
+            <button class="nav-tab-btn" data-tab="receivables" id="tabBtnReceivables">
+              <span>📑</span> Piutang Bon <span class="badge-pill badge-warning" id="navBadgeReceivables">0</span>
+            </button>
+            <button class="nav-tab-btn" data-tab="payables" id="tabBtnPayables">
+              <span>🤝</span> Hutang Supplier <span class="badge-pill badge-danger" id="navBadgePayables">0</span>
+            </button>
+            <button class="nav-tab-btn" data-tab="journal" id="tabBtnJournal">
+              <span>📖</span> Jurnal Umum
+            </button>
+            <button class="nav-tab-btn" data-tab="ledger" id="tabBtnLedger">
+              <span>📕</span> Buku Besar
+            </button>
+            <button class="nav-tab-btn" data-tab="worksheet" id="tabBtnWorksheet">
+              <span>📑</span> Neraca Lajur
+            </button>
+            <button class="nav-tab-btn" data-tab="reports" id="tabBtnReports">
+              <span>📈</span> Laba Rugi & Neraca
+            </button>
+            <button class="nav-tab-btn" data-tab="coa" id="tabBtnCOA">
+              <span>🏷️</span> Bagan Akun (COA)
+            </button>
+            <button class="nav-tab-btn" data-tab="settings" id="tabBtnSettings">
+              <span>⚙️</span> Pengaturan
+            </button>
+          </nav>
         </div>
-
       </div>
     </header>
 
