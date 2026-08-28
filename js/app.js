@@ -1180,24 +1180,11 @@ class AppController {
     const form = document.getElementById('formNewSale');
     if (form) form.reset();
 
-    const invBadge = document.getElementById('saleInvoiceBadge');
-    if (invBadge) {
-      const now = new Date();
-      const ymd = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
-      const rand = Math.floor(1000 + Math.random() * 9000);
-      invBadge.textContent = `FAK-${ymd}-${rand}`;
-    }
-
-    const cashierEl = document.getElementById('saleCashierName');
-    if (cashierEl) cashierEl.textContent = this.auth?.currentUser?.name || 'Kasir Toko';
-
     const dateInput = document.getElementById('saleDate');
     if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
 
     const customerInput = document.getElementById('saleCustomerName');
-    if (customerInput) customerInput.value = 'Pelanggan Umum (Cash)';
-
-    this.toggleSaleDeliveryOptions('pickup');
+    if (customerInput) customerInput.value = 'Pelanggan Umum';
 
     const container = document.getElementById('saleItemsBuilderContainer');
     if (container) container.innerHTML = '';
@@ -1205,39 +1192,6 @@ class AppController {
 
     this.handleSalePaymentMethodChange();
     this.openModal('modalNewSale');
-  }
-
-  toggleSaleDeliveryOptions(type = 'pickup') {
-    const addressGroup = document.getElementById('groupSaleDeliveryAddress');
-    const labelPickup = document.getElementById('labelDeliveryPickup');
-    const labelTruck = document.getElementById('labelDeliveryTruck');
-
-    if (type === 'truck') {
-      if (addressGroup) addressGroup.style.display = 'block';
-      if (labelTruck) labelTruck.classList.add('active');
-      if (labelPickup) labelPickup.classList.remove('active');
-    } else {
-      if (addressGroup) addressGroup.style.display = 'none';
-      if (labelPickup) labelPickup.classList.add('active');
-      if (labelTruck) labelTruck.classList.remove('active');
-    }
-  }
-
-  fillSaleExactCash() {
-    const total = parseFloat(document.getElementById('saleTotalAmount')?.value) || 0;
-    const cashInput = document.getElementById('saleCashPaid');
-    if (cashInput) {
-      cashInput.value = total;
-      this.handleSaleAmountChange();
-    }
-  }
-
-  fillSaleCashDenom(nominal) {
-    const cashInput = document.getElementById('saleCashPaid');
-    if (cashInput) {
-      cashInput.value = nominal;
-      this.handleSaleAmountChange();
-    }
   }
 
   addSaleItemRow(name = '', qty = 1, unit = 'Pcs', price = 0, productId = '', unitRatio = 1) {
@@ -1427,20 +1381,19 @@ class AppController {
     const elTotal = document.getElementById('saleTotalAmount');
     if (elTotal) elTotal.value = total;
 
-    const elDisplay = document.getElementById('saleTotalDisplay');
-    if (elDisplay) elDisplay.textContent = this.store.formatRupiah(total);
-
     this.handleSaleAmountChange();
   }
 
   handleSalePaymentMethodChange() {
     const method = document.getElementById('salePaymentMethod')?.value || 'cash';
-    const panelCash = document.getElementById('panelSaleCash');
-    const panelDebt = document.getElementById('panelSaleDebt');
+    const groupPaid = document.getElementById('groupSalePaidAmount');
+    const groupDueDate = document.getElementById('groupSaleDueDate');
+    const groupDebtCalc = document.getElementById('groupSaleDebtCalc');
 
     if (method === 'piutang') {
-      if (panelCash) panelCash.style.display = 'none';
-      if (panelDebt) panelDebt.style.display = 'block';
+      if (groupPaid) groupPaid.style.display = 'block';
+      if (groupDueDate) groupDueDate.style.display = 'block';
+      if (groupDebtCalc) groupDebtCalc.style.display = 'block';
       const dueInput = document.getElementById('saleDueDate');
       if (dueInput && !dueInput.value) {
         const d = new Date();
@@ -1448,15 +1401,9 @@ class AppController {
         dueInput.value = d.toISOString().split('T')[0];
       }
     } else {
-      if (panelCash) panelCash.style.display = 'block';
-      if (panelDebt) panelDebt.style.display = 'none';
-
-      // Auto-set exact cash for transfer or cash
-      const total = parseFloat(document.getElementById('saleTotalAmount')?.value) || 0;
-      const cashInput = document.getElementById('saleCashPaid');
-      if (cashInput && (!cashInput.value || parseFloat(cashInput.value) === 0)) {
-        cashInput.value = total;
-      }
+      if (groupPaid) groupPaid.style.display = 'none';
+      if (groupDueDate) groupDueDate.style.display = 'none';
+      if (groupDebtCalc) groupDebtCalc.style.display = 'none';
     }
 
     this.handleSaleAmountChange();
@@ -1471,16 +1418,6 @@ class AppController {
       const debt = Math.max(0, totalAmount - dp);
       const debtEl = document.getElementById('saleDebtDisplay');
       if (debtEl) debtEl.textContent = this.store.formatRupiah(debt);
-    } else {
-      const cashPaid = parseFloat(document.getElementById('saleCashPaid')?.value) || 0;
-      const change = Math.max(0, cashPaid - totalAmount);
-      const changeEl = document.getElementById('saleChangeDisplay');
-      if (changeEl) {
-        changeEl.textContent = this.store.formatRupiah(change);
-        if (cashPaid < totalAmount && cashPaid > 0) {
-          changeEl.innerHTML = `<span class="text-danger">Kurang ${this.store.formatRupiah(totalAmount - cashPaid)}</span>`;
-        }
-      }
     }
   }
 
@@ -1489,14 +1426,6 @@ class AppController {
     this.editingTxId = null;
     const form = document.getElementById('formNewPurchase');
     if (form) form.reset();
-
-    const badge = document.getElementById('purchaseInvoiceBadge');
-    if (badge) {
-      const now = new Date();
-      const ymd = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
-      const rand = Math.floor(1000 + Math.random() * 9000);
-      badge.textContent = `RCV-${ymd}-${rand}`;
-    }
 
     const dateInput = document.getElementById('purchaseDate');
     if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
@@ -1663,26 +1592,29 @@ class AppController {
     const elTotal = document.getElementById('purchaseTotalAmount');
     if (elTotal) elTotal.value = total;
 
-    const elDisplay = document.getElementById('purchaseTotalDisplay');
-    if (elDisplay) elDisplay.textContent = this.store.formatRupiah(total);
-
     this.handlePurchaseAmountChange();
   }
 
   handlePurchasePaymentMethodChange() {
     const method = document.getElementById('purchasePaymentMethod')?.value || 'cash';
-    const panelDebt = document.getElementById('panelPurchaseDebt');
+    const groupPaid = document.getElementById('groupPurchasePaidAmount');
+    const groupDueDate = document.getElementById('groupPurchaseDueDate');
+    const groupDebtCalc = document.getElementById('groupPurchaseDebtCalc');
 
     if (method === 'hutang') {
-      if (panelDebt) panelDebt.style.display = 'block';
+      if (groupPaid) groupPaid.style.display = 'block';
+      if (groupDueDate) groupDueDate.style.display = 'block';
+      if (groupDebtCalc) groupDebtCalc.style.display = 'block';
       const dueInput = document.getElementById('purchaseDueDate');
       if (dueInput && !dueInput.value) {
         const d = new Date();
-        d.setDate(d.getDate() + 30); // Default tempo distributor 30 hari
+        d.setDate(d.getDate() + 30);
         dueInput.value = d.toISOString().split('T')[0];
       }
     } else {
-      if (panelDebt) panelDebt.style.display = 'none';
+      if (groupPaid) groupPaid.style.display = 'none';
+      if (groupDueDate) groupDueDate.style.display = 'none';
+      if (groupDebtCalc) groupDebtCalc.style.display = 'none';
     }
 
     this.handlePurchaseAmountChange();
@@ -2191,7 +2123,7 @@ class AppController {
     // Sales Form Events
     document.getElementById('btnAddSaleItemRow')?.addEventListener('click', () => this.addSaleItemRow());
     document.getElementById('salePaymentMethod')?.addEventListener('change', () => this.handleSalePaymentMethodChange());
-    document.getElementById('saleCashPaid')?.addEventListener('input', () => this.handleSaleAmountChange());
+    document.getElementById('saleTotalAmount')?.addEventListener('input', () => this.handleSaleAmountChange());
     document.getElementById('saleDebtDP')?.addEventListener('input', () => this.handleSaleAmountChange());
     document.getElementById('formNewSale')?.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -2201,6 +2133,7 @@ class AppController {
     // Purchase / Restock Form Events
     document.getElementById('btnAddPurchaseItemRow')?.addEventListener('click', () => this.addPurchaseItemRow());
     document.getElementById('purchasePaymentMethod')?.addEventListener('change', () => this.handlePurchasePaymentMethodChange());
+    document.getElementById('purchaseTotalAmount')?.addEventListener('input', () => this.handlePurchaseAmountChange());
     document.getElementById('purchasePaidAmount')?.addEventListener('input', () => this.handlePurchaseAmountChange());
     document.getElementById('formNewPurchase')?.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -2354,24 +2287,21 @@ class AppController {
     }
 
     const primaryCategory = (items[0] && items[0].id) ? (this.inventory?.products.find(p => p.id === items[0].id)?.category || 'lainnya') : 'lainnya';
-
-    const deliveryAddress = document.getElementById('saleDeliveryAddress')?.value.trim() || '';
-    const userNotes = document.getElementById('saleNotes')?.value.trim() || '';
-    const fullNotes = deliveryAddress ? `[Alamat Kirim: ${deliveryAddress}] ${userNotes}` : userNotes;
+    const customer = document.getElementById('saleCustomerName')?.value.trim() || 'Pelanggan Umum';
 
     const txData = {
       type: 'in',
       paymentMethod: method,
       category: primaryCategory,
       date: document.getElementById('saleDate')?.value || new Date().toISOString().split('T')[0],
-      title: document.getElementById('saleTitle')?.value.trim() || `Penjualan ${items[0]?.name}`,
-      customer: document.getElementById('saleCustomerName')?.value.trim() || 'Pelanggan Umum',
+      title: `Penjualan - ${customer}`,
+      customer: customer,
       supplier: '',
       phone: document.getElementById('saleCustomerPhone')?.value.trim() || '',
       amount: totalAmount,
       paidAmount: paidAmount,
       dueDate: document.getElementById('saleDueDate')?.value || '',
-      notes: fullNotes,
+      notes: document.getElementById('saleNotes')?.value.trim() || '',
       items: items
     };
 
@@ -2423,27 +2353,21 @@ class AppController {
     }
 
     const primaryCategory = (items[0] && items[0].id) ? (this.inventory?.products.find(p => p.id === items[0].id)?.category || 'lainnya') : 'lainnya';
-
-    const location = document.getElementById('purchaseLocation')?.value || 'Gudang Utama';
-    const truckNo = document.getElementById('purchaseTruckNo')?.value.trim() || '';
-    const userNotes = document.getElementById('purchaseNotes')?.value.trim() || '';
-    let combinedNotes = `[Lokasi: ${location}]`;
-    if (truckNo) combinedNotes += ` [Armada: ${truckNo}]`;
-    if (userNotes) combinedNotes += ` ${userNotes}`;
+    const supplier = document.getElementById('purchaseSupplierName')?.value.trim() || 'Distributor Pabrik';
 
     const txData = {
       type: 'out',
       paymentMethod: method,
       category: primaryCategory,
       date: document.getElementById('purchaseDate')?.value || new Date().toISOString().split('T')[0],
-      title: document.getElementById('purchaseTitle')?.value.trim() || `Kulakan ${items[0]?.name}`,
+      title: `Kulakan - ${supplier}`,
       customer: '',
-      supplier: document.getElementById('purchaseSupplierName')?.value.trim() || 'Distributor Pabrik',
+      supplier: supplier,
       phone: document.getElementById('purchaseInvoiceNo')?.value.trim() || '',
       amount: totalAmount,
       paidAmount: paidAmount,
       dueDate: document.getElementById('purchaseDueDate')?.value || '',
-      notes: combinedNotes,
+      notes: document.getElementById('purchaseNotes')?.value.trim() || '',
       items: items
     };
 
