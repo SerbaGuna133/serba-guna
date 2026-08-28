@@ -2299,6 +2299,17 @@ class AppController {
     }
   }
 
+  applyCameraManualCode() {
+    const inp = document.getElementById('cameraManualCodeInput');
+    const val = (inp?.value || '').trim();
+    if (!val) {
+      alert("Silakan ketik nomor kode angka terlebih dahulu!");
+      return;
+    }
+    this.closeCameraScannerModal();
+    this.handleBarcodeScanInPOS(val);
+  }
+
   deleteProduct(productId) {
     if (confirm("Apakah Anda yakin ingin menghapus barang ini dari master inventori?")) {
       this.inventory.deleteProduct(productId);
@@ -2680,6 +2691,10 @@ class AppController {
     document.getElementById('btnOpenNewPurchaseModal')?.addEventListener('click', () => this.openNewPurchaseModal());
 
     // Sales Form Events
+    document.getElementById('btnOpenScannerCamera')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.openCameraScannerModal();
+    });
     document.getElementById('saleBarcodeScannerInput')?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
