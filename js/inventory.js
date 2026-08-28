@@ -20,15 +20,16 @@ class InventoryStore {
       const savedProducts = localStorage.getItem(STORAGE_KEYS_INVENTORY.PRODUCTS);
       if (savedProducts) {
         this.products = JSON.parse(savedProducts);
-        // Auto-assign code & barcode if missing
+        // Auto-assign numeric code & barcode if missing or non-numeric
         let modified = false;
-        this.products.forEach(p => {
-          if (!p.code) {
-            p.code = p.id.toUpperCase();
+        this.products.forEach((p, idx) => {
+          if (!p.code || /[a-zA-Z-]/.test(p.code)) {
+            p.code = String(1000 + (idx + 1));
+            p.barcode = p.code;
             modified = true;
           }
           if (!p.barcode) {
-            p.barcode = p.code || p.id;
+            p.barcode = p.code;
             modified = true;
           }
         });
@@ -67,19 +68,36 @@ class InventoryStore {
   }
 
   generateProductCode() {
-    const nextNum = this.products.length + 1;
-    return `BRG-${String(nextNum).padStart(3, '0')}`;
+    let maxNum = 1000;
+    this.products.forEach(p => {
+      const num = parseInt(p.code, 10);
+      if (!isNaN(num) && num >= 1000 && num > maxNum) {
+        maxNum = num;
+      }
+    });
+    return String(maxNum + 1);
   }
 
   findProductByQuery(query) {
     if (!query) return null;
     const q = String(query).trim().toLowerCase();
-    return this.products.find(p => 
-      (p.barcode && p.barcode.toLowerCase() === q) ||
+    
+    // 1. Exact match on numeric code or barcode
+    const exactCode = this.products.find(p => 
       (p.code && p.code.toLowerCase() === q) ||
-      p.id.toLowerCase() === q ||
-      p.name.toLowerCase() === q ||
+      (p.barcode && p.barcode.toLowerCase() === q) ||
+      p.id.toLowerCase() === q
+    );
+    if (exactCode) return exactCode;
+
+    // 2. Exact match on product name
+    const exactName = this.products.find(p => p.name.toLowerCase() === q);
+    if (exactName) return exactName;
+
+    // 3. Name starts with or includes query
+    return this.products.find(p => 
       p.name.toLowerCase().startsWith(q) ||
+      p.name.toLowerCase().includes(q) ||
       (p.code && p.code.toLowerCase().startsWith(q))
     ) || null;
   }

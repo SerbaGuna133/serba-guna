@@ -580,7 +580,7 @@ class AppController {
       return `
         <tr>
           <td>
-            <div class="font-mono text-xs font-bold" style="color: var(--primary);">🏷️ ${p.code || p.id}</div>
+            <div class="font-mono text-xs font-bold" style="color: var(--primary);">🔢 ${p.code || p.id}</div>
             ${p.barcode && p.barcode !== (p.code || p.id) ? `<div class="text-xs text-muted font-mono">||| ${p.barcode}</div>` : ''}
           </td>
           <td>

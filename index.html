@@ -1057,10 +1057,10 @@
               <span style="font-size: 1.3rem;">📷</span>
               <div class="flex-1">
                 <label for="saleBarcodeScannerInput" class="form-label font-bold text-success" style="margin-bottom: 0.2rem; font-size: 0.82rem;">
-                  ⚡ Scan Barcode / Ketik Kode Barang Cepat:
+                  ⚡ Scan Barcode / Ketik Kode Angka Cepat:
                 </label>
                 <div class="d-flex gap-2">
-                  <input type="text" id="saleBarcodeScannerInput" class="form-control font-mono font-bold" placeholder="Scan barcode alat scanner atau ketik kode (misal: BRG-001) lalu tekan Enter..." autocomplete="off" />
+                  <input type="text" id="saleBarcodeScannerInput" class="form-control font-mono font-bold" placeholder="Ketik kode angka (misal: 1001) lalu Enter atau scan barcode..." autocomplete="off" inputmode="numeric" />
                   <button type="button" class="btn btn-success btn-sm" id="btnApplyBarcodeScan"><span>🔍</span> Scan / Cari</button>
                 </div>
               </div>
@@ -1297,10 +1297,10 @@
         <div class="modal-body">
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label font-bold">🏷️ Kode / Barcode Barang:</label>
+              <label class="form-label font-bold">🔢 Kode / Barcode Angka Barang:</label>
               <div class="d-flex gap-1">
-                <input type="text" id="modalProdCode" class="form-control font-mono font-bold" placeholder="Contoh: BRG-001 / 89912345" required />
-                <button type="button" class="btn btn-outline btn-sm" id="btnGenerateBarcode" title="Generate Kode Otomatis">✨ Auto</button>
+                <input type="text" id="modalProdCode" class="form-control font-mono font-bold" placeholder="Contoh: 1001 / 1002" inputmode="numeric" required />
+                <button type="button" class="btn btn-outline btn-sm" id="btnGenerateBarcode" title="Generate Kode Angka Otomatis">✨ Auto Angka</button>
               </div>
             </div>
             <div class="form-group">
