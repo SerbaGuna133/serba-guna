@@ -25,6 +25,23 @@ class TransactionStore {
       const savedTx = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
       if (savedTx) {
         this.transactions = JSON.parse(savedTx);
+        let modified = false;
+        this.transactions.forEach(tx => {
+          if (Array.isArray(tx.items) && tx.items.length > 0) {
+            tx.items.forEach(it => {
+              if ((!it.price || it.price === 0) && (tx.subtotal || tx.amount)) {
+                it.price = (it.subtotal && it.subtotal > 0 && it.qty > 0)
+                  ? Math.round(it.subtotal / it.qty)
+                  : (tx.subtotal ? Math.round(tx.subtotal / it.qty) : Math.round(tx.amount / it.qty));
+                it.subtotal = it.qty * it.price;
+                modified = true;
+              }
+            });
+          }
+        });
+        if (modified) {
+          this.persistLocal();
+        }
       } else {
         this.transactions = [];
         this.persistLocal();

@@ -257,15 +257,18 @@ class ExportManager {
         <div class="thermal-divider" style="text-align: center; font-weight: 700; letter-spacing: -1px; overflow: hidden; margin: 4px 0; user-select: none;">--------------------------------</div>
 
         <div class="thermal-items-list" style="margin: 4px 0;">
-          ${items.map(it => `
+          ${items.map(it => {
+            const itPrice = (it.price && it.price > 0) ? it.price : ((it.subtotal && it.subtotal > 0 && it.qty > 0) ? Math.round(it.subtotal / it.qty) : ((tx.subtotal || tx.amount) && it.qty > 0 ? Math.round((tx.subtotal || tx.amount) / it.qty) : 0));
+            const itSubtotal = (it.subtotal && it.subtotal > 0) ? it.subtotal : (it.qty * itPrice);
+            return `
             <div class="thermal-item-row" style="margin-bottom: 6px;">
               <div class="thermal-item-name" style="font-weight: 700; font-size: 11.5px;">${it.name}</div>
               <div class="thermal-item-details" style="display: flex; justify-content: space-between; font-size: 10.5px; color: #222222;">
-                <span>${it.qty} ${it.unit || 'Pcs'} x ${this.store.formatRupiah(it.price)}</span>
-                <span class="font-bold" style="font-weight: 700;">${this.store.formatRupiah(it.subtotal || (it.qty * it.price))}</span>
+                <span>${it.qty} ${it.unit || 'Pcs'} x ${this.store.formatRupiah(itPrice)}</span>
+                <span class="font-bold" style="font-weight: 700;">${this.store.formatRupiah(itSubtotal)}</span>
               </div>
             </div>
-          `).join('')}
+          `;}).join('')}
         </div>
 
         <div class="thermal-divider" style="text-align: center; font-weight: 700; letter-spacing: -1px; overflow: hidden; margin: 4px 0; user-select: none;">--------------------------------</div>
@@ -363,17 +366,20 @@ class ExportManager {
 
     let itemsRows = "";
     if (Array.isArray(tx.items) && tx.items.length > 0) {
-      itemsRows = tx.items.map((item, idx) => `
+      itemsRows = tx.items.map((item, idx) => {
+        const itPrice = (item.price && item.price > 0) ? item.price : ((item.subtotal && item.subtotal > 0 && item.qty > 0) ? Math.round(item.subtotal / item.qty) : ((tx.subtotal || tx.amount) && item.qty > 0 ? Math.round((tx.subtotal || tx.amount) / item.qty) : 0));
+        const itSubtotal = (item.subtotal && item.subtotal > 0) ? item.subtotal : (item.qty * itPrice);
+        return `
         <tr>
           <td class="text-center" style="text-align: center;">${idx + 1}</td>
           <td class="font-mono text-xs" style="font-family: monospace; font-size: 0.75rem;">${item.id || `ITM-${idx+1}`}</td>
           <td><strong>${item.name}</strong></td>
           <td class="text-center" style="text-align: center;">${item.qty}</td>
           <td class="text-center" style="text-align: center;">${item.unit || 'Pcs'}</td>
-          <td class="text-right" style="text-align: right;">${this.store.formatRupiah(item.price)}</td>
-          <td class="text-right font-semibold" style="text-align: right; font-weight: 600;">${this.store.formatRupiah(item.subtotal)}</td>
+          <td class="text-right" style="text-align: right;">${this.store.formatRupiah(itPrice)}</td>
+          <td class="text-right font-semibold" style="text-align: right; font-weight: 600;">${this.store.formatRupiah(itSubtotal)}</td>
         </tr>
-      `).join('');
+      `;}).join('');
     } else {
       itemsRows = `
         <tr>

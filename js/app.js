@@ -2448,7 +2448,7 @@ class AppController {
       const qty = parseFloat(row.querySelector('.item-qty')?.value) || 1;
       const unit = row.querySelector('.item-unit-select')?.value || row.querySelector('.item-unit')?.value.trim() || 'Pcs';
       const unitRatio = parseFloat(row.querySelector('.item-unit-ratio')?.value) || 1;
-      const price = parseFloat(row.querySelector('.item-price')?.value) || 0;
+      const price = this.parseRupiah(row.querySelector('.item-price')?.dataset?.rawValue || row.querySelector('.item-price')?.value) || 0;
       const productId = row.querySelector('.item-product-id')?.value || '';
       const cogs = parseFloat(row.querySelector('.item-cogs')?.value) || 0;
 
