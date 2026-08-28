@@ -80,9 +80,21 @@ class InventoryStore {
 
   findProductByQuery(query) {
     if (!query) return null;
-    const q = String(query).trim().toLowerCase();
+    let q = String(query).trim().toLowerCase();
     
-    // 1. Exact match on numeric code or barcode
+    // Parse [Kode: XXX] or [XXX]
+    const codeInBracket = q.match(/\[(?:kode:\s*)?([a-z0-9-]+)\]/i);
+    if (codeInBracket && codeInBracket[1]) {
+      const bCode = codeInBracket[1].toLowerCase();
+      const byBracket = this.products.find(p => 
+        (p.code && p.code.toLowerCase() === bCode) ||
+        (p.barcode && p.barcode.toLowerCase() === bCode) ||
+        p.id.toLowerCase() === bCode
+      );
+      if (byBracket) return byBracket;
+    }
+
+    // 1. Exact match on numeric code, barcode, or id
     const exactCode = this.products.find(p => 
       (p.code && p.code.toLowerCase() === q) ||
       (p.barcode && p.barcode.toLowerCase() === q) ||
@@ -94,11 +106,18 @@ class InventoryStore {
     const exactName = this.products.find(p => p.name.toLowerCase() === q);
     if (exactName) return exactName;
 
-    // 3. Name starts with or includes query
+    // 3. Match code at start e.g. "1001 - Kran Sangar"
+    const prefixCode = this.products.find(p => 
+      p.code && q.startsWith(p.code.toLowerCase())
+    );
+    if (prefixCode) return prefixCode;
+
+    // 4. Name starts with or includes query
     return this.products.find(p => 
       p.name.toLowerCase().startsWith(q) ||
       p.name.toLowerCase().includes(q) ||
-      (p.code && p.code.toLowerCase().startsWith(q))
+      (p.code && p.code.toLowerCase().startsWith(q)) ||
+      (p.barcode && p.barcode.toLowerCase().includes(q))
     ) || null;
   }
 

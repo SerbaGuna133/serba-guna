@@ -1324,12 +1324,18 @@ class AppController {
   }
 
   handleBarcodeScanInPOS(codeQuery) {
-    if (!codeQuery || !codeQuery.trim()) return;
-    const q = codeQuery.trim();
-    const prod = this.inventory ? this.inventory.findProductByQuery(q) : null;
+    const input = document.getElementById('saleBarcodeScannerInput');
+    const q = (typeof codeQuery === 'string' && codeQuery.trim() !== '') ? codeQuery.trim() : (input?.value || '').trim();
+    if (!q) {
+      alert("Silakan ketik nomor kode barang (misal: 1001) atau scan barcode terlebih dahulu!");
+      if (input) input.focus();
+      return;
+    }
 
+    const prod = this.inventory ? this.inventory.findProductByQuery(q) : null;
     if (!prod) {
-      this.showToast(`⚠️ Barang dengan kode/barcode "${q}" tidak ditemukan di Master Barang!`, 'danger');
+      alert(`❌ Barang dengan kode/nama "${q}" tidak ditemukan di Master Stok Barang.\n\nTips: Periksa apakah kode barang sudah benar di tab Stok Barang.`);
+      if (input) input.select();
       return;
     }
 
@@ -1357,29 +1363,24 @@ class AppController {
         
         // Visual green pulse
         existingRow.style.transition = 'background 0.3s';
-        existingRow.style.background = 'rgba(16, 185, 129, 0.2)';
+        existingRow.style.background = 'rgba(16, 185, 129, 0.25)';
         setTimeout(() => { existingRow.style.background = ''; }, 600);
       }
     } else {
-      // Check if first row is empty
+      // If there is an empty placeholder first row, remove it first
       if (rows.length === 1 && !rows[0].querySelector('.item-name')?.value.trim()) {
-        const row = rows[0];
-        const nameInput = row.querySelector('.item-name');
-        nameInput.value = prod.name;
-        nameInput.dispatchEvent(new Event('input', { bubbles: true }));
-      } else {
-        this.addSaleItemRow(prod.name, 1, prod.unit, prod.sellPrice, prod.id);
+        rows[0].remove();
       }
+      this.addSaleItemRow(prod.name, 1, prod.unit, prod.sellPrice, prod.id);
     }
 
     this.recalculateSaleItemsTotal();
-    this.showToast(`✅ [${prod.code || prod.id}] ${prod.name} ditambahkan (+1)!`, 'success');
+    this.showToast(`✅ [${prod.code || prod.id}] ${prod.name} masuk ke kasir!`, 'success');
 
     // Reset scanner input and refocus
-    const scannerInput = document.getElementById('saleBarcodeScannerInput');
-    if (scannerInput) {
-      scannerInput.value = '';
-      scannerInput.focus();
+    if (input) {
+      input.value = '';
+      input.focus();
     }
   }
 
@@ -1588,6 +1589,7 @@ class AppController {
     }
 
     if (matched) {
+      updateUnitControl(matched);
       validateAndRenderStock(matched);
     }
 

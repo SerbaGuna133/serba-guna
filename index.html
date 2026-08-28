@@ -1063,8 +1063,8 @@
                   ⚡ Scan Barcode / Ketik Kode Angka Cepat:
                 </label>
                 <div class="d-flex gap-2">
-                  <input type="text" id="saleBarcodeScannerInput" class="form-control font-mono font-bold" placeholder="Ketik kode angka (misal: 1001) lalu Enter atau scan barcode..." autocomplete="off" inputmode="numeric" />
-                  <button type="button" class="btn btn-success btn-sm" id="btnApplyBarcodeScan"><span>🔍</span> Scan / Cari</button>
+                  <input type="text" id="saleBarcodeScannerInput" class="form-control font-mono font-bold" placeholder="Ketik kode angka (misal: 1001) lalu Enter atau scan barcode..." autocomplete="off" inputmode="numeric" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.app && window.app.handleBarcodeScanInPOS(this.value);}" />
+                  <button type="button" class="btn btn-success btn-sm" id="btnApplyBarcodeScan" onclick="window.app && window.app.handleBarcodeScanInPOS(document.getElementById('saleBarcodeScannerInput').value)"><span>🔍</span> Scan / Cari</button>
                 </div>
               </div>
             </div>
