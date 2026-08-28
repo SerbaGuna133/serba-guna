@@ -1033,6 +1033,20 @@
             <label class="form-label">Lokasi Penempatan Gudang / Rak:</label>
             <input type="text" id="modalProdLocation" class="form-control" placeholder="Contoh: Gudang Utama A1 / Rak Besi B2" />
           </div>
+
+          <!-- Live Total Asset HPP Valuation Box -->
+          <div class="form-grid" style="background: var(--bg-subtle); padding: 0.85rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-top: 0.5rem;">
+            <div>
+              <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted);">Total Nilai Aset Masuk (HPP):</div>
+              <div id="modalProdTotalAssetVal" class="font-bold text-success" style="font-size: 1.15rem; margin-top: 0.15rem;">Rp 0</div>
+              <small class="text-xs text-muted">Kalkulasi: (Harga Modal × Jumlah Stok)</small>
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted);">Potensi Omset Penjualan:</div>
+              <div id="modalProdTotalRetailVal" class="font-bold text-info" style="font-size: 1.15rem; margin-top: 0.15rem;">Rp 0</div>
+              <small class="text-xs text-muted">Kalkulasi: (Harga Jual × Jumlah Stok)</small>
+            </div>
+          </div>
         </div>
 
         <div class="modal-footer">

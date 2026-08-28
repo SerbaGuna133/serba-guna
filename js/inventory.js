@@ -125,15 +125,33 @@ class InventoryStore {
     if (!Array.isArray(items)) return;
 
     items.forEach(item => {
-      const product = this.products.find(p => p.id === item.id || p.name.toLowerCase() === item.name.toLowerCase());
+      let product = this.products.find(p => p.id === item.id || p.name.toLowerCase() === item.name.toLowerCase());
+      const qty = Number(item.qty) || 0;
+      const unitPrice = Number(item.price) || 0;
+
       if (product) {
-        const qty = Number(item.qty) || 0;
         product.stock += qty;
-        if (item.price && item.price > 0) {
-          product.buyPrice = item.price;
+        if (unitPrice > 0) {
+          product.buyPrice = unitPrice;
         }
         product.updatedAt = new Date().toISOString();
         this.logStockMovement(product.id, qty, 'in', `Kulakan Distributor Faktur #${txId}`);
+      } else if (item.name && qty > 0) {
+        // Otomatis daftarkan barang baru jika belum terdaftar di master
+        const newProd = {
+          id: this.generateProductId(),
+          name: item.name.trim(),
+          category: item.category || "lainnya",
+          unit: item.unit || "Pcs",
+          buyPrice: unitPrice,
+          sellPrice: unitPrice > 0 ? (unitPrice * 1.15) : 0,
+          stock: qty,
+          minStock: 5,
+          location: "Gudang Utama",
+          updatedAt: new Date().toISOString()
+        };
+        this.products.push(newProd);
+        this.logStockMovement(newProd.id, qty, 'in', `Kulakan Masuk (Item Baru) Faktur #${txId}`);
       }
     });
 

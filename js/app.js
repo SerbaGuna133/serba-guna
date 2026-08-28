@@ -1115,11 +1115,27 @@ class AppController {
   }
 
   // 2. Modal Master Produk Inventori
+  recalculateProductModalAsset() {
+    const buyPrice = parseFloat(document.getElementById('modalProdBuyPrice')?.value) || 0;
+    const sellPrice = parseFloat(document.getElementById('modalProdSellPrice')?.value) || 0;
+    const stock = parseFloat(document.getElementById('modalProdStock')?.value) || 0;
+
+    const totalAsset = buyPrice * stock;
+    const totalRetail = sellPrice * stock;
+
+    const elAsset = document.getElementById('modalProdTotalAssetVal');
+    const elRetail = document.getElementById('modalProdTotalRetailVal');
+
+    if (elAsset) elAsset.textContent = this.store.formatRupiah(totalAsset);
+    if (elRetail) elRetail.textContent = this.store.formatRupiah(totalRetail);
+  }
+
   openNewProductModal() {
     this.editingProdId = null;
     const form = document.getElementById('formNewProduct');
     if (form) form.reset();
     document.getElementById('modalProductTitle').textContent = `📦 Tambah Master Barang Material`;
+    this.recalculateProductModalAsset();
     this.openModal('modalNewProduct');
   }
 
@@ -1138,6 +1154,7 @@ class AppController {
     document.getElementById('modalProdMinStock').value = p.minStock;
     document.getElementById('modalProdLocation').value = p.location || '';
 
+    this.recalculateProductModalAsset();
     this.openModal('modalNewProduct');
   }
 
@@ -1349,6 +1366,9 @@ class AppController {
     document.getElementById('invSearchInput')?.addEventListener('input', () => this.renderInventoryView());
     document.getElementById('invCategoryFilter')?.addEventListener('change', () => this.renderInventoryView());
     document.getElementById('invLowStockOnly')?.addEventListener('change', () => this.renderInventoryView());
+    ['modalProdBuyPrice', 'modalProdSellPrice', 'modalProdStock'].forEach(id => {
+      document.getElementById(id)?.addEventListener('input', () => this.recalculateProductModalAsset());
+    });
 
     // COA Events
     document.getElementById('btnOpenNewCOAModal')?.addEventListener('click', () => this.openNewCOAModal());
@@ -1521,27 +1541,33 @@ class AppController {
   }
 
   handleSaveProduct() {
+    const buyPrice = parseFloat(document.getElementById('modalProdBuyPrice').value) || 0;
+    const sellPrice = parseFloat(document.getElementById('modalProdSellPrice').value) || 0;
+    const stock = parseFloat(document.getElementById('modalProdStock').value) || 0;
+    const totalAssetVal = buyPrice * stock;
+
     const prodData = {
-      name: document.getElementById('modalProdName').value,
+      name: document.getElementById('modalProdName').value.trim(),
       category: document.getElementById('modalProdCategory').value,
-      unit: document.getElementById('modalProdUnit').value,
-      buyPrice: parseFloat(document.getElementById('modalProdBuyPrice').value) || 0,
-      sellPrice: parseFloat(document.getElementById('modalProdSellPrice').value) || 0,
-      stock: parseFloat(document.getElementById('modalProdStock').value) || 0,
+      unit: document.getElementById('modalProdUnit').value.trim(),
+      buyPrice: buyPrice,
+      sellPrice: sellPrice,
+      stock: stock,
       minStock: parseFloat(document.getElementById('modalProdMinStock').value) || 5,
-      location: document.getElementById('modalProdLocation').value
+      location: document.getElementById('modalProdLocation').value.trim()
     };
 
     if (this.editingProdId) {
       this.inventory.updateProduct(this.editingProdId, prodData);
-      this.showToast("Data barang berhasil diperbarui!");
+      this.showToast(`Data barang diperbarui! Total Nilai Aset: ${this.store.formatRupiah(totalAssetVal)}`);
     } else {
       this.inventory.addProduct(prodData);
-      this.showToast("Barang material baru berhasil ditambahkan!");
+      this.showToast(`Barang masuk dicatat! Total Nilai Aset (HPP): ${this.store.formatRupiah(totalAssetVal)}`);
     }
 
     this.closeModal('modalNewProduct');
     this.renderInventoryView();
+    this.updateNavBadges();
   }
 
   handleSaveCOA() {
