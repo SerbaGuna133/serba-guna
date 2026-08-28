@@ -43,12 +43,24 @@ class AuthManager {
   loadUsers() {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS_AUTH.USERS);
-      if (saved) {
-        this.users = JSON.parse(saved);
+      let parsed = saved ? JSON.parse(saved) : [];
+
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        parsed = [...DEFAULT_USERS];
       } else {
-        this.users = [...DEFAULT_USERS];
-        this.saveUsers();
+        // Sinkronkan email dan username default jika belum terdaftar
+        DEFAULT_USERS.forEach(defUser => {
+          const idx = parsed.findIndex(u => u.username === defUser.username || u.id === defUser.id);
+          if (idx === -1) {
+            parsed.push(defUser);
+          } else {
+            if (!parsed[idx].email) parsed[idx].email = defUser.email;
+          }
+        });
       }
+
+      this.users = parsed;
+      this.saveUsers();
     } catch (e) {
       console.warn("Gagal memuat pengguna:", e);
       this.users = [...DEFAULT_USERS];
@@ -176,10 +188,23 @@ class AuthManager {
     }
 
     // 2. Fallback Verifikasi Kredensial Lokal (Offline / Default Users)
-    const user = this.users.find(u => u.username.toLowerCase() === cleanInput || (u.email && u.email.toLowerCase() === cleanInput));
+    let user = this.users.find(u => 
+      u.username.toLowerCase() === cleanInput || 
+      (u.email && u.email.toLowerCase() === cleanInput) ||
+      (cleanInput === '133serbaguna@gmail.com' && u.username === 'admin')
+    );
+
+    // Default rescue fallback
+    if (!user) {
+      if (cleanInput === 'admin' || cleanInput === '133serbaguna@gmail.com' || cleanInput.startsWith('admin@')) {
+        user = DEFAULT_USERS[0];
+      } else if (cleanInput === 'kasir' || cleanInput.startsWith('kasir@')) {
+        user = DEFAULT_USERS[1];
+      }
+    }
 
     if (!user) {
-      throw new Error("Akun tidak ditemukan. Gunakan email Firebase Anda yang lengkap (misal: nama@gmail.com) atau username 'admin' / 'kasir'.");
+      throw new Error("Akun tidak ditemukan. Gunakan email 133serbaguna@gmail.com atau username 'admin' / 'kasir'.");
     }
 
     if (user.password !== password.trim()) {
