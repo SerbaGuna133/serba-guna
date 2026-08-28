@@ -12,6 +12,7 @@ class AppController {
     this.charts = window.financeCharts;
     this.export = window.exportManager;
     this.firebase = window.firebaseService;
+    this.auth = window.authManager;
 
     this.currentTab = 'dashboard';
     this.selectedPeriod = '2026-08';
@@ -27,6 +28,9 @@ class AppController {
     this.populateCOAOptions();
     this.bindEvents();
 
+    // Periksa status login pengguna
+    const isAuthed = this.checkAuthStatus();
+
     if (this.firebase.config) {
       await this.firebase.init();
       this.firebase.listenToTransactions(
@@ -41,7 +45,127 @@ class AppController {
 
     this.updateCloudStatusBadge();
     this.updateStoreProfileHeader();
-    this.switchTab('dashboard');
+    if (isAuthed) {
+      this.switchTab('dashboard');
+    }
+  }
+
+  // ==================== AUTH & SESSION ====================
+  checkAuthStatus() {
+    const loginScreen = document.getElementById('loginScreen');
+    const appContainer = document.getElementById('appContainer');
+
+    if (!this.auth || !this.auth.isLoggedIn()) {
+      if (loginScreen) loginScreen.style.display = 'flex';
+      if (appContainer) appContainer.style.display = 'none';
+      return false;
+    } else {
+      if (loginScreen) loginScreen.style.display = 'none';
+      if (appContainer) appContainer.style.display = 'block';
+      this.updateUserSessionHeader();
+      return true;
+    }
+  }
+
+  updateUserSessionHeader() {
+    const user = this.auth.getCurrentUser();
+    if (!user) return;
+
+    const avatarEl = document.getElementById('headerUserAvatar');
+    const nameEl = document.getElementById('headerUserName');
+    if (avatarEl) avatarEl.textContent = user.role === 'owner' ? '👑' : '💼';
+    if (nameEl) nameEl.textContent = user.name;
+  }
+
+  handleLogin(e) {
+    if (e) e.preventDefault();
+    const alertBox = document.getElementById('loginAlert');
+    const userInp = document.getElementById('loginUsername');
+    const passInp = document.getElementById('loginPassword');
+    const remInp = document.getElementById('loginRememberMe');
+
+    const username = userInp ? userInp.value.trim() : '';
+    const password = passInp ? passInp.value.trim() : '';
+    const rememberMe = remInp ? remInp.checked : true;
+
+    try {
+      if (alertBox) alertBox.style.display = 'none';
+      const user = this.auth.login(username, password, rememberMe);
+
+      const loginScreen = document.getElementById('loginScreen');
+      const appContainer = document.getElementById('appContainer');
+      if (loginScreen) loginScreen.style.display = 'none';
+      if (appContainer) appContainer.style.display = 'block';
+
+      this.updateUserSessionHeader();
+      this.refreshCurrentView();
+      this.showToast(`Selamat datang kembali, ${user.name}! 👋`);
+    } catch (err) {
+      if (alertBox) {
+        alertBox.textContent = err.message;
+        alertBox.style.display = 'block';
+      } else {
+        alert(err.message);
+      }
+    }
+  }
+
+  handleLogout() {
+    if (confirm("Apakah Anda yakin ingin keluar dan mengunci aplikasi TB. Serba Guna?")) {
+      this.auth.logout();
+      const loginScreen = document.getElementById('loginScreen');
+      const appContainer = document.getElementById('appContainer');
+      if (loginScreen) loginScreen.style.display = 'flex';
+      if (appContainer) appContainer.style.display = 'none';
+
+      const passInp = document.getElementById('loginPassword');
+      if (passInp) passInp.value = '';
+
+      this.showToast("Anda telah keluar dari aplikasi.", "warning");
+    }
+  }
+
+  fillLoginPreset(username, password) {
+    const userInp = document.getElementById('loginUsername');
+    const passInp = document.getElementById('loginPassword');
+    if (userInp) userInp.value = username;
+    if (passInp) passInp.value = password;
+    this.handleLogin();
+  }
+
+  togglePasswordVisibility() {
+    const passInp = document.getElementById('loginPassword');
+    const btn = document.getElementById('btnTogglePassword');
+    if (!passInp) return;
+
+    if (passInp.type === 'password') {
+      passInp.type = 'text';
+      if (btn) btn.textContent = '🙈';
+    } else {
+      passInp.type = 'password';
+      if (btn) btn.textContent = '👁️';
+    }
+  }
+
+  handleChangePassword(e) {
+    if (e) e.preventDefault();
+    const userSelect = document.getElementById('pwdUserSelect')?.value;
+    const oldPass = document.getElementById('pwdOld')?.value;
+    const newPass = document.getElementById('pwdNew')?.value;
+    const confirmPass = document.getElementById('pwdConfirm')?.value;
+
+    if (newPass !== confirmPass) {
+      alert("Konfirmasi password baru tidak cocok. Harap periksa kembali.");
+      return;
+    }
+
+    try {
+      this.auth.changePassword(userSelect, oldPass, newPass);
+      document.getElementById('formChangePassword')?.reset();
+      this.showToast(`Password untuk akun ${userSelect} berhasil diperbarui!`);
+    } catch (err) {
+      alert(err.message);
+    }
   }
 
   // ==================== TEMA ====================
@@ -1504,6 +1628,12 @@ class AppController {
 
   // ==================== EVENT LISTENERS ====================
   bindEvents() {
+    // Auth & Login Form Events
+    document.getElementById('formLogin')?.addEventListener('submit', (e) => this.handleLogin(e));
+    document.getElementById('btnLogout')?.addEventListener('click', () => this.handleLogout());
+    document.getElementById('btnTogglePassword')?.addEventListener('click', () => this.togglePasswordVisibility());
+    document.getElementById('formChangePassword')?.addEventListener('submit', (e) => this.handleChangePassword(e));
+
     // Nav Tabs & Mouse Wheel Horizontal Scroll
     const navTabs = document.getElementById('mainNavTabs');
     if (navTabs) {
