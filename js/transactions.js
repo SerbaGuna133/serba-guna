@@ -367,18 +367,43 @@ class TransactionStore {
     });
 
     list.forEach(tx => {
-      const catId = tx.category || 'lainnya';
-      if (!breakdown[catId]) {
-        breakdown[catId] = {
-          name: catId,
-          icon: '📦',
-          color: '#64748b',
-          amount: 0,
-          count: 0
-        };
+      if (Array.isArray(tx.items) && tx.items.length > 0) {
+        tx.items.forEach(it => {
+          let catId = 'lainnya';
+          if (window.inventoryStore) {
+            const prod = window.inventoryStore.products.find(p => (it.id && p.id === it.id) || (it.name && p.name.toLowerCase() === it.name.toLowerCase()));
+            if (prod && prod.category) {
+              catId = prod.category;
+            }
+          }
+          if (!breakdown[catId]) {
+            const catObj = MATERIAL_CATEGORIES.find(c => c.id === catId);
+            breakdown[catId] = {
+              name: catObj ? catObj.name : catId,
+              icon: catObj ? catObj.icon : '📦',
+              color: catObj ? catObj.color : '#64748b',
+              amount: 0,
+              count: 0
+            };
+          }
+          const itemSubtotal = it.subtotal || ((Number(it.qty) || 1) * (Number(it.price) || 0));
+          breakdown[catId].amount += itemSubtotal;
+          breakdown[catId].count += 1;
+        });
+      } else {
+        const catId = tx.category || 'lainnya';
+        if (!breakdown[catId]) {
+          breakdown[catId] = {
+            name: catId,
+            icon: '📦',
+            color: '#64748b',
+            amount: 0,
+            count: 0
+          };
+        }
+        breakdown[catId].amount += tx.amount;
+        breakdown[catId].count += 1;
       }
-      breakdown[catId].amount += tx.amount;
-      breakdown[catId].count += 1;
     });
 
     return Object.values(breakdown).filter(item => item.amount > 0);
