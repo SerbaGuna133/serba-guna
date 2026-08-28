@@ -1421,7 +1421,7 @@ class AppController {
     }
   }
 
-  // 2. MODAL KULAKAN & PENERIMAAN STOK GUDANG (KAS KELUAR)
+  // 2. MODAL KULAKAN & TAMBAH STOK BARANG (PERSIS SEPERTI FORM MASTER BARANG)
   openNewPurchaseModal(prefilledProductId = null) {
     this.editingTxId = null;
     const form = document.getElementById('formNewPurchase');
@@ -1430,181 +1430,123 @@ class AppController {
     const dateInput = document.getElementById('purchaseDate');
     if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
 
-    const container = document.getElementById('purchaseItemsBuilderContainer');
-    if (container) container.innerHTML = '';
+    const supplierInput = document.getElementById('purchaseSupplierName');
+    if (supplierInput) supplierInput.value = 'Distributor Pabrik';
 
-    if (prefilledProductId) {
-      const prod = this.inventory?.products.find(p => p.id === prefilledProductId);
-      if (prod) {
-        this.addPurchaseItemRow(prod.name, 10, prod.hasMultiUnit ? prod.packUnit : prod.unit, prod.hasMultiUnit && prod.packBuyPrice ? prod.packBuyPrice : prod.buyPrice, prod.id, prod.hasMultiUnit ? prod.packRatio : 1);
-      } else {
-        this.addPurchaseItemRow();
-      }
-    } else {
-      this.addPurchaseItemRow();
+    // Populate dropdown Master Barang
+    const prodSelect = document.getElementById('purchaseProductSelect');
+    if (prodSelect) {
+      const products = this.inventory ? this.inventory.products : [];
+      prodSelect.innerHTML = '<option value="">-- Pilih Barang yang Akan Ditambah Stoknya --</option>' +
+        products.map(p => {
+          const packInfo = p.hasMultiUnit && p.packUnit ? ` (1 ${p.packUnit} = ${p.packRatio} ${p.unit})` : '';
+          return `<option value="${p.id}" ${p.id === prefilledProductId ? 'selected' : ''}>${p.name} — Sisa: ${p.stock} ${p.unit}${packInfo}</option>`;
+        }).join('');
     }
 
+    this.handlePurchaseProductSelectChange();
     this.handlePurchasePaymentMethodChange();
     this.openModal('modalNewPurchase');
   }
 
-  addPurchaseItemRow(name = '', qty = 1, unit = 'Pcs', price = 0, productId = '', unitRatio = 1) {
-    const container = document.getElementById('purchaseItemsBuilderContainer');
-    if (!container) return;
+  handlePurchaseProductSelectChange() {
+    const selId = document.getElementById('purchaseProductSelect')?.value;
+    const prod = this.inventory ? this.inventory.products.find(p => p.id === selId) : null;
 
-    const row = document.createElement('div');
-    row.className = 'items-builder-row';
+    const catDisplay = document.getElementById('purchaseProdCategoryDisplay');
+    const unitDisplay = document.getElementById('purchaseProdUnitDisplay');
+    const curStockDisplay = document.getElementById('purchaseCurrentStockDisplay');
+    const buyPriceInput = document.getElementById('purchaseBuyPrice');
+    const sellPriceInput = document.getElementById('purchaseSellPrice');
+    const multiWrap = document.getElementById('purchaseMultiUnitWrap');
+    const ratioBadge = document.getElementById('purchasePackRatioBadge');
+    const unitChoice = document.getElementById('purchaseUnitChoice');
+    const packBuyInput = document.getElementById('purchasePackBuyPrice');
 
-    const productsList = this.inventory ? this.inventory.products : [];
-    const datalistId = `dl-purchase-${Date.now()}-${Math.floor(Math.random()*1000)}`;
-
-    const matched = productsList.find(p => (productId && p.id === productId) || (name && p.name.toLowerCase() === name.toLowerCase()));
-    const units = matched ? this.inventory.getProductUnits(matched) : [];
-
-    let unitControlHTML = '';
-    if (units.length > 1) {
-      unitControlHTML = `
-        <select class="form-control item-unit-select">
-          ${units.map(u => `<option value="${u.unitName}" data-ratio="${u.ratio}" data-price="${u.buyPrice}" data-sell="${u.sellPrice}" ${u.unitName === unit ? 'selected' : ''}>${u.label} (Modal: Rp ${u.buyPrice})</option>`).join('')}
-        </select>
-      `;
-    } else {
-      unitControlHTML = `<input type="text" class="form-control item-unit" placeholder="Satuan" value="${unit || 'Pcs'}" />`;
+    if (!prod) {
+      if (catDisplay) catDisplay.value = '';
+      if (unitDisplay) unitDisplay.value = '';
+      if (curStockDisplay) curStockDisplay.value = '0';
+      if (buyPriceInput) buyPriceInput.value = '';
+      if (sellPriceInput) sellPriceInput.value = '';
+      if (multiWrap) multiWrap.style.display = 'none';
+      this.recalculatePurchaseForm();
+      return;
     }
 
-    row.innerHTML = `
-      <div>
-        <input type="text" list="${datalistId}" class="form-control item-name" placeholder="Ketik / pilih barang yang dibeli..." value="${name}" required />
-        <datalist id="${datalistId}">
-          ${productsList.map(p => {
-            const packInfo = p.hasMultiUnit ? ` | 📦 1 ${p.packUnit}=${p.packRatio} ${p.unit}` : '';
-            return `<option value="${p.name}" data-id="${p.id}" data-unit="${p.unit}" data-price="${p.buyPrice}">Stok Saat Ini: ${p.stock} ${p.unit}${packInfo} | Modal Beli: Rp ${p.buyPrice}</option>`;
-          }).join('')}
-        </datalist>
-        <input type="hidden" class="item-product-id" value="${productId || (matched ? matched.id : '')}" />
-        <input type="hidden" class="item-unit-ratio" value="${unitRatio || 1}" />
-        <div class="item-stock-badge"></div>
-      </div>
-      <div>
-        <input type="number" class="form-control item-qty" placeholder="Qty Masuk" value="${qty}" min="0.1" step="any" required />
-      </div>
-      <div class="item-unit-wrapper">${unitControlHTML}</div>
-      <input type="number" class="form-control item-price" placeholder="Harga Beli Pabrik (Rp)" value="${price}" min="0" step="100" required />
-      <button type="button" class="btn-icon-only text-danger btn-remove-item" title="Hapus Baris" style="margin-top: 5px;">✕</button>
-    `;
+    const catObj = MATERIAL_CATEGORIES.find(c => c.id === prod.category);
+    if (catDisplay) catDisplay.value = catObj ? `${catObj.icon || ''} ${catObj.name}` : prod.category;
+    if (unitDisplay) unitDisplay.value = prod.unit || 'Pcs';
+    if (curStockDisplay) curStockDisplay.value = `${prod.stock} ${prod.unit}`;
+    if (buyPriceInput) buyPriceInput.value = prod.buyPrice || 0;
+    if (sellPriceInput) sellPriceInput.value = prod.sellPrice || 0;
 
-    const nameInput = row.querySelector('.item-name');
-    const unitWrapper = row.querySelector('.item-unit-wrapper');
-    const stockBadge = row.querySelector('.item-stock-badge');
-
-    const updateStockBadge = (prod) => {
-      if (!prod) {
-        stockBadge.innerHTML = '';
-        return;
-      }
-      stockBadge.innerHTML = `<span class="text-muted font-semibold">📦 Stok Lama: <strong>${prod.stock} ${prod.unit}</strong></span>`;
-    };
-
-    const updateUnitControl = (prod) => {
-      if (!prod) {
-        unitWrapper.innerHTML = `<input type="text" class="form-control item-unit" placeholder="Satuan" value="Pcs" />`;
-        row.querySelector('.item-unit-ratio').value = 1;
-        updateStockBadge(null);
-        return;
-      }
-
-      const availableUnits = this.inventory.getProductUnits(prod);
-      if (availableUnits.length > 1) {
-        unitWrapper.innerHTML = `
-          <select class="form-control item-unit-select">
-            ${availableUnits.map(u => `<option value="${u.unitName}" data-ratio="${u.ratio}" data-price="${u.buyPrice}">${u.label} (Modal: Rp ${u.buyPrice})</option>`).join('')}
-          </select>
+    if (prod.hasMultiUnit && prod.packUnit) {
+      if (multiWrap) multiWrap.style.display = 'block';
+      if (ratioBadge) ratioBadge.textContent = `1 ${prod.packUnit} = ${prod.packRatio} ${prod.unit}`;
+      if (unitChoice) {
+        unitChoice.innerHTML = `
+          <option value="base">${prod.unit} (Eceran)</option>
+          <option value="pack" selected>${prod.packUnit} (Grosir / Dus — Isi ${prod.packRatio} ${prod.unit})</option>
         `;
-        const sel = unitWrapper.querySelector('.item-unit-select');
-        const selectedOpt = sel.options[sel.selectedIndex];
-        row.querySelector('.item-unit-ratio').value = selectedOpt.dataset.ratio || 1;
-        row.querySelector('.item-price').value = selectedOpt.dataset.price || prod.buyPrice;
-
-        sel.addEventListener('change', (e) => {
-          const opt = e.target.options[e.target.selectedIndex];
-          row.querySelector('.item-unit-ratio').value = opt.dataset.ratio || 1;
-          row.querySelector('.item-price').value = opt.dataset.price || 0;
-          this.recalculatePurchaseItemsTotal();
-        });
-      } else {
-        unitWrapper.innerHTML = `<input type="text" class="form-control item-unit" placeholder="Satuan" value="${prod.unit || 'Pcs'}" />`;
-        row.querySelector('.item-unit-ratio').value = 1;
-        row.querySelector('.item-price').value = prod.buyPrice;
       }
-      updateStockBadge(prod);
-      this.recalculatePurchaseItemsTotal();
-    };
-
-    nameInput.addEventListener('input', (e) => {
-      const val = e.target.value;
-      const found = productsList.find(p => p.name.toLowerCase() === val.toLowerCase());
-      if (found) {
-        row.querySelector('.item-product-id').value = found.id;
-        updateUnitControl(found);
-      } else {
-        updateStockBadge(null);
+      if (packBuyInput) {
+        packBuyInput.value = prod.packBuyPrice || (prod.buyPrice * (prod.packRatio || 1));
       }
-    });
-
-    row.querySelectorAll('input').forEach(inp => {
-      inp.addEventListener('input', () => this.recalculatePurchaseItemsTotal());
-    });
-
-    const initialSel = row.querySelector('.item-unit-select');
-    if (initialSel) {
-      initialSel.addEventListener('change', (e) => {
-        const opt = e.target.options[e.target.selectedIndex];
-        row.querySelector('.item-unit-ratio').value = opt.dataset.ratio || 1;
-        row.querySelector('.item-price').value = opt.dataset.price || 0;
-        this.recalculatePurchaseItemsTotal();
-      });
+    } else {
+      if (multiWrap) multiWrap.style.display = 'none';
     }
 
-    if (matched) {
-      updateStockBadge(matched);
-    }
-
-    row.querySelector('.btn-remove-item').addEventListener('click', () => {
-      row.remove();
-      this.recalculatePurchaseItemsTotal();
-    });
-
-    container.appendChild(row);
+    this.recalculatePurchaseForm();
   }
 
-  recalculatePurchaseItemsTotal() {
-    const container = document.getElementById('purchaseItemsBuilderContainer');
-    if (!container) return;
+  recalculatePurchaseForm() {
+    const selId = document.getElementById('purchaseProductSelect')?.value;
+    const prod = this.inventory ? this.inventory.products.find(p => p.id === selId) : null;
 
-    let total = 0;
-    const rows = container.querySelectorAll('.items-builder-row');
-    rows.forEach(row => {
-      const qty = parseFloat(row.querySelector('.item-qty')?.value) || 0;
-      const price = parseFloat(row.querySelector('.item-price')?.value) || 0;
-      total += (qty * price);
-    });
+    const totalAssetEl = document.getElementById('purchaseTotalAssetVal');
+    const newStockEl = document.getElementById('purchaseNewStockPreview');
 
-    const elTotal = document.getElementById('purchaseTotalAmount');
-    if (elTotal) elTotal.value = total;
+    if (!prod) {
+      if (totalAssetEl) totalAssetEl.textContent = 'Rp 0';
+      if (newStockEl) newStockEl.textContent = '0 Pcs';
+      return;
+    }
 
-    this.handlePurchaseAmountChange();
+    const qty = parseFloat(document.getElementById('purchaseAddQty')?.value) || 0;
+    const unitChoiceVal = document.getElementById('purchaseUnitChoice')?.value || 'base';
+    const isPack = (prod.hasMultiUnit && unitChoiceVal === 'pack');
+    const ratio = isPack ? (prod.packRatio || 1) : 1;
+
+    const baseQtyAdded = qty * ratio;
+    const buyPrice = isPack
+      ? (parseFloat(document.getElementById('purchasePackBuyPrice')?.value) || (prod.buyPrice * ratio))
+      : (parseFloat(document.getElementById('purchaseBuyPrice')?.value) || prod.buyPrice);
+
+    const totalCost = qty * buyPrice;
+    const newStock = (Number(prod.stock) || 0) + baseQtyAdded;
+
+    if (totalAssetEl) totalAssetEl.textContent = this.store.formatRupiah(totalCost);
+    if (newStockEl) {
+      const packSuffix = prod.hasMultiUnit && prod.packRatio > 1 ? ` (≈ ${(newStock / prod.packRatio).toFixed(1)} ${prod.packUnit})` : '';
+      newStockEl.textContent = `${newStock} ${prod.unit}${packSuffix}`;
+    }
+
+    const method = document.getElementById('purchasePaymentMethod')?.value || 'cash';
+    if (method === 'hutang') {
+      const dp = parseFloat(document.getElementById('purchasePaidAmount')?.value) || 0;
+      const debt = Math.max(0, totalCost - dp);
+      const debtEl = document.getElementById('purchaseDebtDisplay');
+      if (debtEl) debtEl.textContent = this.store.formatRupiah(debt);
+    }
   }
 
   handlePurchasePaymentMethodChange() {
     const method = document.getElementById('purchasePaymentMethod')?.value || 'cash';
-    const groupPaid = document.getElementById('groupPurchasePaidAmount');
-    const groupDueDate = document.getElementById('groupPurchaseDueDate');
-    const groupDebtCalc = document.getElementById('groupPurchaseDebtCalc');
+    const panelDebt = document.getElementById('groupPurchaseDebtPanel');
 
     if (method === 'hutang') {
-      if (groupPaid) groupPaid.style.display = 'block';
-      if (groupDueDate) groupDueDate.style.display = 'block';
-      if (groupDebtCalc) groupDebtCalc.style.display = 'block';
+      if (panelDebt) panelDebt.style.display = 'block';
       const dueInput = document.getElementById('purchaseDueDate');
       if (dueInput && !dueInput.value) {
         const d = new Date();
@@ -1612,24 +1554,10 @@ class AppController {
         dueInput.value = d.toISOString().split('T')[0];
       }
     } else {
-      if (groupPaid) groupPaid.style.display = 'none';
-      if (groupDueDate) groupDueDate.style.display = 'none';
-      if (groupDebtCalc) groupDebtCalc.style.display = 'none';
+      if (panelDebt) panelDebt.style.display = 'none';
     }
 
-    this.handlePurchaseAmountChange();
-  }
-
-  handlePurchaseAmountChange() {
-    const totalAmount = parseFloat(document.getElementById('purchaseTotalAmount')?.value) || 0;
-    const method = document.getElementById('purchasePaymentMethod')?.value || 'cash';
-
-    if (method === 'hutang') {
-      const dp = parseFloat(document.getElementById('purchasePaidAmount')?.value) || 0;
-      const debt = Math.max(0, totalAmount - dp);
-      const debtEl = document.getElementById('purchaseDebtDisplay');
-      if (debtEl) debtEl.textContent = this.store.formatRupiah(debt);
-    }
+    this.recalculatePurchaseForm();
   }
 
   openNewTransactionModal() {
@@ -2131,10 +2059,13 @@ class AppController {
     });
 
     // Purchase / Restock Form Events
-    document.getElementById('btnAddPurchaseItemRow')?.addEventListener('click', () => this.addPurchaseItemRow());
+    document.getElementById('purchaseProductSelect')?.addEventListener('change', () => this.handlePurchaseProductSelectChange());
+    document.getElementById('purchaseUnitChoice')?.addEventListener('change', () => this.recalculatePurchaseForm());
+    document.getElementById('purchaseBuyPrice')?.addEventListener('input', () => this.recalculatePurchaseForm());
+    document.getElementById('purchasePackBuyPrice')?.addEventListener('input', () => this.recalculatePurchaseForm());
+    document.getElementById('purchaseAddQty')?.addEventListener('input', () => this.recalculatePurchaseForm());
     document.getElementById('purchasePaymentMethod')?.addEventListener('change', () => this.handlePurchasePaymentMethodChange());
-    document.getElementById('purchaseTotalAmount')?.addEventListener('input', () => this.handlePurchaseAmountChange());
-    document.getElementById('purchasePaidAmount')?.addEventListener('input', () => this.handlePurchaseAmountChange());
+    document.getElementById('purchasePaidAmount')?.addEventListener('input', () => this.recalculatePurchaseForm());
     document.getElementById('formNewPurchase')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       await this.handleSavePurchase();
@@ -2322,62 +2253,88 @@ class AppController {
   }
 
   async handleSavePurchase() {
-    const items = [];
+    const selId = document.getElementById('purchaseProductSelect')?.value;
+    const prod = this.inventory ? this.inventory.products.find(p => p.id === selId) : null;
 
-    document.querySelectorAll('#purchaseItemsBuilderContainer .items-builder-row').forEach(row => {
-      const name = row.querySelector('.item-name')?.value.trim();
-      const qty = parseFloat(row.querySelector('.item-qty')?.value) || 1;
-      const unit = row.querySelector('.item-unit-select')?.value || row.querySelector('.item-unit')?.value.trim() || 'Pcs';
-      const unitRatio = parseFloat(row.querySelector('.item-unit-ratio')?.value) || 1;
-      const price = parseFloat(row.querySelector('.item-price')?.value) || 0;
-      const productId = row.querySelector('.item-product-id')?.value || '';
-
-      if (name) {
-        items.push({ id: productId, name, qty, unit, unitRatio, price, cogs: price, subtotal: qty * price });
-      }
-    });
-
-    if (items.length === 0) {
-      alert("Silakan masukkan minimal 1 barang material yang dibeli / masuk gudang!");
+    if (!prod) {
+      alert("Silakan pilih barang material yang akan ditambah stoknya!");
       return;
     }
 
-    const totalAmount = parseFloat(document.getElementById('purchaseTotalAmount')?.value) || 0;
+    const qtyInput = parseFloat(document.getElementById('purchaseAddQty')?.value) || 0;
+    if (qtyInput <= 0) {
+      alert("Silakan masukkan jumlah stok yang ditambahkan (lebih dari 0)!");
+      return;
+    }
+
+    const unitChoiceVal = document.getElementById('purchaseUnitChoice')?.value || 'base';
+    const isPack = (prod.hasMultiUnit && unitChoiceVal === 'pack');
+    const ratio = isPack ? (prod.packRatio || 1) : 1;
+
+    const baseQtyAdded = qtyInput * ratio;
+    const unitBought = isPack ? prod.packUnit : prod.unit;
+    const effectivePrice = isPack
+      ? (parseFloat(document.getElementById('purchasePackBuyPrice')?.value) || (prod.buyPrice * ratio))
+      : (parseFloat(document.getElementById('purchaseBuyPrice')?.value) || prod.buyPrice);
+
+    const totalCost = qtyInput * effectivePrice;
     const method = document.getElementById('purchasePaymentMethod')?.value || 'cash';
-    let paidAmount = totalAmount;
+    let paidAmount = totalCost;
 
     if (method === 'hutang') {
       paidAmount = parseFloat(document.getElementById('purchasePaidAmount')?.value) || 0;
     } else {
-      paidAmount = totalAmount;
+      paidAmount = totalCost;
     }
 
-    const primaryCategory = (items[0] && items[0].id) ? (this.inventory?.products.find(p => p.id === items[0].id)?.category || 'lainnya') : 'lainnya';
     const supplier = document.getElementById('purchaseSupplierName')?.value.trim() || 'Distributor Pabrik';
+    const unitCostBase = baseQtyAdded > 0 ? Math.round(totalCost / baseQtyAdded) : effectivePrice;
+
+    // Sinkronisasi update harga modal / harga jual master barang jika diedit di form
+    const newSellPrice = parseFloat(document.getElementById('purchaseSellPrice')?.value) || prod.sellPrice;
+    const updatedProdData = {
+      buyPrice: isPack ? unitCostBase : (parseFloat(document.getElementById('purchaseBuyPrice')?.value) || prod.buyPrice),
+      sellPrice: newSellPrice
+    };
+    if (isPack && prod.hasMultiUnit) {
+      updatedProdData.packBuyPrice = effectivePrice;
+    }
+    this.inventory.updateProduct(prod.id, updatedProdData);
 
     const txData = {
       type: 'out',
       paymentMethod: method,
-      category: primaryCategory,
+      category: prod.category || 'lainnya',
       date: document.getElementById('purchaseDate')?.value || new Date().toISOString().split('T')[0],
-      title: `Kulakan - ${supplier}`,
+      title: `Kulakan ${prod.name} (${qtyInput} ${unitBought})`,
       customer: '',
       supplier: supplier,
-      phone: document.getElementById('purchaseInvoiceNo')?.value.trim() || '',
-      amount: totalAmount,
+      phone: '',
+      amount: totalCost,
       paidAmount: paidAmount,
       dueDate: document.getElementById('purchaseDueDate')?.value || '',
       notes: document.getElementById('purchaseNotes')?.value.trim() || '',
-      items: items
+      items: [
+        {
+          id: prod.id,
+          name: prod.name,
+          qty: baseQtyAdded,
+          unit: prod.unit,
+          unitRatio: 1,
+          price: unitCostBase,
+          cogs: unitCostBase,
+          subtotal: totalCost
+        }
+      ]
     };
 
     try {
       const saved = await this.store.addTransaction(txData);
       this.closeModal('modalNewPurchase');
       this.refreshCurrentView();
-      this.showToast(`Kulakan ${saved.id} berhasil dicatat & stok gudang otomatis bertambah!`);
+      this.showToast(`Stok ${prod.name} berhasil ditambah +${baseQtyAdded} ${prod.unit}! Kulakan ${saved.id} tercatat.`);
     } catch (err) {
-      alert("Gagal menyimpan pembelian: " + err.message);
+      alert("Gagal menyimpan kulakan: " + err.message);
     }
   }
 

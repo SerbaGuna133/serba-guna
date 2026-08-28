@@ -1092,75 +1092,140 @@
     </div>
   </div>
 
-  <!-- 2. MODAL KULAKAN / PEMBELIAN STOK (KAS KELUAR) -->
+  <!-- 2. MODAL KULAKAN & TAMBAH STOK BARANG -->
   <div class="modal-backdrop" id="modalNewPurchase">
-    <div class="modal-content modal-lg">
+    <div class="modal-content">
       <div class="modal-header">
-        <h3 class="modal-title">📥 Kulakan & Tambah Stok Masuk (Kas Keluar)</h3>
+        <h3 class="modal-title" id="modalPurchaseTitle">📥 Kulakan & Tambah Stok Masuk</h3>
         <button class="btn-icon-only" onclick="window.app.closeModal('modalNewPurchase')">✕</button>
       </div>
       <form id="formNewPurchase">
         <div class="modal-body">
+          
+          <!-- Dropdown Pilih Barang dari Master Barang -->
+          <div class="form-group">
+            <label class="form-label font-bold">Pilih Barang / Material dari Master Stok:</label>
+            <select id="purchaseProductSelect" class="form-control font-bold" required>
+              <option value="">-- Pilih Barang yang Akan Ditambah Stoknya --</option>
+            </select>
+          </div>
+
+          <!-- Kategori & Satuan Dasar (Otomatis Terisi) -->
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label">Tanggal Pembelian / Masuk:</label>
+              <label class="form-label">Kategori Material:</label>
+              <input type="text" id="purchaseProdCategoryDisplay" class="form-control" placeholder="Kategori Barang" readonly style="background: var(--bg-subtle);" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Satuan Dasar (Terkecil / Eceran):</label>
+              <input type="text" id="purchaseProdUnitDisplay" class="form-control font-semibold" placeholder="Pcs / Meter / Kg / Batang" readonly style="background: var(--bg-subtle);" />
+            </div>
+          </div>
+
+          <!-- Multi-Satuan Kemasan / Dus (Otomatis Tampil Jika Produk Punya Dus/Sak) -->
+          <div id="purchaseMultiUnitWrap" style="display: none; background: var(--bg-subtle); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px dashed var(--border-color); margin-bottom: 1rem;">
+            <div class="d-flex align-center justify-between mb-2">
+              <span class="font-bold text-xs text-muted">📦 INFORMASI SATUAN KEMASAN / GROSIR:</span>
+              <span id="purchasePackRatioBadge" class="badge badge-info">1 Dus = 12 Pcs</span>
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Satuan Pembelian / Masuk:</label>
+                <select id="purchaseUnitChoice" class="form-control font-bold">
+                  <option value="base">Eceran Dasar</option>
+                  <option value="pack">Kemasan / Grosir (Dus/Sak)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Harga Modal Kemasan (Rp):</label>
+                <input type="number" id="purchasePackBuyPrice" class="form-control font-bold" min="0" step="100" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Harga Modal & Harga Jual (Otomatis Terisi) -->
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Harga Modal / Beli Eceran (HPP):</label>
+              <input type="number" id="purchaseBuyPrice" class="form-control font-bold" min="0" step="100" placeholder="0" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Harga Jual Kasir Eceran (Rp):</label>
+              <input type="number" id="purchaseSellPrice" class="form-control font-bold text-success" min="0" step="100" placeholder="0" />
+            </div>
+          </div>
+
+          <!-- Sisa Stok Saat Ini & Jumlah Stok Tambahan -->
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Sisa Stok di Gudang Saat Ini:</label>
+              <input type="text" id="purchaseCurrentStockDisplay" class="form-control font-bold text-muted" value="0" readonly style="background: var(--bg-subtle);" />
+            </div>
+            <div class="form-group">
+              <label class="form-label font-bold text-primary">➕ Jumlah Stok yang Ditambahkan:</label>
+              <input type="number" id="purchaseAddQty" class="form-control font-bold" min="0.1" step="any" placeholder="Contoh: 50" required />
+            </div>
+          </div>
+
+          <!-- Info Supplier, Tanggal & Metode Bayar -->
+          <div class="form-grid mt-2 pt-2" style="border-top: 1px solid var(--border-color);">
+            <div class="form-group">
+              <label class="form-label">Tanggal Kulakan / Masuk:</label>
               <input type="date" id="purchaseDate" class="form-control" required />
             </div>
-
             <div class="form-group">
               <label class="form-label">Nama Supplier / Distributor:</label>
               <input type="text" id="purchaseSupplierName" class="form-control" placeholder="Contoh: Distributor Semen Gresik / Pabrik Besi" required />
             </div>
+          </div>
 
+          <div class="form-grid">
             <div class="form-group">
               <label class="form-label">Metode Pembayaran ke Supplier:</label>
               <select id="purchasePaymentMethod" class="form-control" required>
                 <option value="cash">💵 Tunai Kas Toko</option>
                 <option value="transfer">💳 Transfer Bank BCA</option>
-                <option value="hutang">🤝 Tempo Supplier / Hutang Dagang (Bayar Nanti)</option>
+                <option value="hutang">🤝 Tempo Supplier / Hutang Dagang</option>
               </select>
             </div>
-
             <div class="form-group">
-              <label class="form-label">No. Surat Jalan / Faktur Supplier (Opsional):</label>
-              <input type="text" id="purchaseInvoiceNo" class="form-control" placeholder="Contoh: SJ-2026/08/019" />
+              <label class="form-label">Catatan / No. Surat Jalan (Opsional):</label>
+              <input type="text" id="purchaseNotes" class="form-control" placeholder="Contoh: No SJ-1234 / Supir Pak Joko" />
             </div>
           </div>
 
-          <!-- Rincian Barang yang Masuk -->
-          <div class="form-group mt-3">
-            <div class="d-flex align-center justify-between mb-1">
-              <label class="form-label font-bold" style="margin-bottom: 0;">Rincian Barang yang Masuk (Otomatis Tambah Stok):</label>
-              <button type="button" class="btn btn-outline btn-sm" id="btnAddPurchaseItemRow">
-                <span>➕</span> Tambah Barang
-              </button>
+          <!-- Panel Tempo Hutang Jika Dipilih -->
+          <div id="groupPurchaseDebtPanel" style="display: none; background: var(--bg-subtle); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-top: 0.5rem;">
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">DP / Bayar Sekarang (Rp):</label>
+                <input type="number" id="purchasePaidAmount" class="form-control font-semibold" min="0" step="100" placeholder="0" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Jatuh Tempo Pembayaran Hutang:</label>
+                <input type="date" id="purchaseDueDate" class="form-control" />
+              </div>
             </div>
-            <div class="items-builder-wrap" id="purchaseItemsBuilderContainer"></div>
-          </div>
-
-          <div class="form-grid mt-3" style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-            <div class="form-group">
-              <label class="form-label">Total Tagihan Pembelian (Rp):</label>
-              <input type="number" id="purchaseTotalAmount" class="form-control font-bold text-danger" min="0" step="100" placeholder="0" required />
-            </div>
-            <div class="form-group" id="groupPurchasePaidAmount" style="display: none;">
-              <label class="form-label">Uang Muka / DP ke Supplier (Rp):</label>
-              <input type="number" id="purchasePaidAmount" class="form-control font-semibold" min="0" step="100" placeholder="0" />
-            </div>
-            <div class="form-group" id="groupPurchaseDueDate" style="display: none;">
-              <label class="form-label">Tanggal Jatuh Tempo Hutang:</label>
-              <input type="date" id="purchaseDueDate" class="form-control" />
-            </div>
-            <div class="form-group" id="groupPurchaseDebtCalc" style="display: none;">
-              <label class="form-label">Sisa Hutang ke Distributor:</label>
-              <div id="purchaseDebtDisplay" class="font-bold text-danger" style="font-size: 1.1rem; padding-top: 0.35rem;">Rp 0</div>
+            <div class="d-flex align-center justify-between mt-1 pt-1" style="border-top: 1px dashed var(--border-color);">
+              <span class="text-xs font-bold text-danger">Sisa Hutang Usaha ke Distributor:</span>
+              <span class="font-bold text-danger" id="purchaseDebtDisplay">Rp 0</span>
             </div>
           </div>
 
-          <div class="form-group mt-3">
-            <label class="form-label">Catatan Tambahan (Opsional):</label>
-            <input type="text" id="purchaseNotes" class="form-control" placeholder="Catatan tambahan, no polisi truk, dll..." />
+          <!-- Live Total Asset HPP Valuation Box -->
+          <div class="form-grid" style="background: var(--bg-subtle); padding: 0.85rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-top: 0.75rem;">
+            <div>
+              <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted);">Total Biaya Kulakan (HPP Masuk):</div>
+              <div id="purchaseTotalAssetVal" class="font-bold text-danger" style="font-size: 1.25rem; margin-top: 0.15rem;">Rp 0</div>
+              <small class="text-xs text-muted">Kalkulasi: (Harga Modal × Qty Tambah)</small>
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted);">Total Stok Baru Nanti:</div>
+              <div id="purchaseNewStockPreview" class="font-bold text-success" style="font-size: 1.25rem; margin-top: 0.15rem;">0 Pcs</div>
+              <small class="text-xs text-muted">Kalkulasi: (Stok Lama + Qty Tambah)</small>
+            </div>
           </div>
+
         </div>
 
         <div class="modal-footer">
