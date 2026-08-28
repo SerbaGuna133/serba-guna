@@ -1415,7 +1415,37 @@ class AppController {
 
   // ==================== EVENT LISTENERS ====================
   bindEvents() {
-    // Nav Tabs
+    // Nav Tabs & Mouse Wheel Horizontal Scroll
+    const navTabs = document.getElementById('mainNavTabs');
+    if (navTabs) {
+      // Geser horizontal saat mouse di-roll (scroll wheel)
+      navTabs.addEventListener('wheel', (e) => {
+        if (e.deltaY !== 0) {
+          e.preventDefault();
+          navTabs.scrollLeft += (e.deltaY * 0.9);
+        }
+      }, { passive: false });
+
+      // Drag to slide dengan klik & geser mouse
+      let isDown = false;
+      let startX, scrollLeft;
+
+      navTabs.addEventListener('mousedown', (e) => {
+        isDown = true;
+        startX = e.pageX - navTabs.offsetLeft;
+        scrollLeft = navTabs.scrollLeft;
+      });
+      navTabs.addEventListener('mouseleave', () => { isDown = false; });
+      navTabs.addEventListener('mouseup', () => { isDown = false; });
+      navTabs.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - navTabs.offsetLeft;
+        const walk = (x - startX) * 1.5;
+        navTabs.scrollLeft = scrollLeft - walk;
+      });
+    }
+
     document.querySelectorAll('.nav-tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const tab = btn.getAttribute('data-tab');

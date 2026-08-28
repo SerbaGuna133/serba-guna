@@ -208,7 +208,7 @@ button, input, select, textarea {
   font-weight: 500;
 }
 
-/* Navigation Tabs (Scrollable on small screens) */
+/* Navigation Tabs (Scrollable on mouse wheel & small screens) */
 .app-nav-tabs {
   display: flex;
   align-items: center;
@@ -218,6 +218,29 @@ button, input, select, textarea {
   gap: 0.2rem;
   overflow-x: auto;
   max-width: 65vw;
+  scroll-behavior: smooth;
+  cursor: grab;
+  user-select: none;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-subtle) transparent;
+}
+
+.app-nav-tabs:active {
+  cursor: grabbing;
+}
+
+.app-nav-tabs::-webkit-scrollbar {
+  height: 4px;
+}
+
+.app-nav-tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-nav-tabs::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 4px;
 }
 
 .nav-tab-btn {
