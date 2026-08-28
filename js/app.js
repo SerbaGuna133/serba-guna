@@ -1196,6 +1196,21 @@ class AppController {
     const customerInput = document.getElementById('saleCustomerName');
     if (customerInput) customerInput.value = 'Pelanggan Umum';
 
+    const discInput = document.getElementById('saleDiscountAmount');
+    if (discInput) discInput.value = '';
+
+    const subtotalInput = document.getElementById('saleSubtotalAmount');
+    if (subtotalInput) subtotalInput.value = 0;
+
+    const tenderedInput = document.getElementById('saleTenderedAmount');
+    if (tenderedInput) tenderedInput.value = '';
+
+    const changeDisplay = document.getElementById('saleChangeAmountDisplay');
+    if (changeDisplay) {
+      changeDisplay.textContent = 'Rp 0';
+      changeDisplay.className = 'font-bold text-muted';
+    }
+
     const container = document.getElementById('saleItemsBuilderContainer');
     if (container) container.innerHTML = '';
     this.addSaleItemRow();
@@ -1380,13 +1395,19 @@ class AppController {
     const container = document.getElementById('saleItemsBuilderContainer');
     if (!container) return;
 
-    let total = 0;
+    let subtotal = 0;
     const rows = container.querySelectorAll('.items-builder-row');
     rows.forEach(row => {
       const qty = parseFloat(row.querySelector('.item-qty')?.value) || 0;
       const price = parseFloat(row.querySelector('.item-price')?.value) || 0;
-      total += (qty * price);
+      subtotal += (qty * price);
     });
+
+    const elSubtotal = document.getElementById('saleSubtotalAmount');
+    if (elSubtotal) elSubtotal.value = subtotal;
+
+    const discount = parseFloat(document.getElementById('saleDiscountAmount')?.value) || 0;
+    const total = Math.max(0, subtotal - discount);
 
     const elTotal = document.getElementById('saleTotalAmount');
     if (elTotal) elTotal.value = total;
@@ -1426,7 +1447,15 @@ class AppController {
   }
 
   handleSaleAmountChange() {
-    const totalAmount = parseFloat(document.getElementById('saleTotalAmount')?.value) || 0;
+    const subtotal = parseFloat(document.getElementById('saleSubtotalAmount')?.value) || 0;
+    const discount = parseFloat(document.getElementById('saleDiscountAmount')?.value) || 0;
+    const totalAmount = Math.max(0, subtotal - discount);
+
+    const elTotal = document.getElementById('saleTotalAmount');
+    if (elTotal && parseFloat(elTotal.value) !== totalAmount) {
+      elTotal.value = totalAmount;
+    }
+
     const method = document.getElementById('salePaymentMethod')?.value || 'cash';
 
     if (method === 'piutang') {
@@ -2086,6 +2115,7 @@ class AppController {
     // Sales Form Events
     document.getElementById('btnAddSaleItemRow')?.addEventListener('click', () => this.addSaleItemRow());
     document.getElementById('salePaymentMethod')?.addEventListener('change', () => this.handleSalePaymentMethodChange());
+    document.getElementById('saleDiscountAmount')?.addEventListener('input', () => this.handleSaleAmountChange());
     document.getElementById('saleTotalAmount')?.addEventListener('input', () => this.handleSaleAmountChange());
     document.getElementById('saleTenderedAmount')?.addEventListener('input', () => this.handleSaleAmountChange());
     document.getElementById('saleDebtDP')?.addEventListener('input', () => this.handleSaleAmountChange());
@@ -2259,6 +2289,9 @@ class AppController {
     const tendered = parseFloat(document.getElementById('saleTenderedAmount')?.value) || 0;
     const change = (tendered >= totalAmount && method === 'cash') ? (tendered - totalAmount) : 0;
 
+    const subtotalAmount = parseFloat(document.getElementById('saleSubtotalAmount')?.value) || totalAmount;
+    const discountAmount = parseFloat(document.getElementById('saleDiscountAmount')?.value) || 0;
+
     const txData = {
       type: 'in',
       paymentMethod: method,
@@ -2269,6 +2302,8 @@ class AppController {
       supplier: '',
       phone: document.getElementById('saleCustomerPhone')?.value.trim() || '',
       amount: totalAmount,
+      subtotal: subtotalAmount,
+      discount: discountAmount,
       paidAmount: paidAmount,
       tenderedAmount: tendered,
       changeAmount: change,

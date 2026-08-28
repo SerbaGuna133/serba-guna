@@ -271,8 +271,18 @@ class ExportManager {
         <div class="thermal-divider" style="text-align: center; font-weight: 700; letter-spacing: -1px; overflow: hidden; margin: 4px 0; user-select: none;">--------------------------------</div>
 
         <div class="thermal-summary" style="font-size: 11.5px; margin: 4px 0;">
+          ${(tx.discount > 0) ? `
           <div class="d-flex justify-between thermal-sum-row" style="display: flex; justify-content: space-between; margin: 2px 0;">
-            <span>TOTAL BELANJA:</span>
+            <span>SUBTOTAL:</span>
+            <span>${this.store.formatRupiah(tx.subtotal || (tx.amount + tx.discount))}</span>
+          </div>
+          <div class="d-flex justify-between thermal-sum-row font-bold" style="display: flex; justify-content: space-between; margin: 2px 0; color: #dc2626;">
+            <span>DISKON / POTONGAN:</span>
+            <span>-${this.store.formatRupiah(tx.discount)}</span>
+          </div>
+          ` : ''}
+          <div class="d-flex justify-between thermal-sum-row" style="display: flex; justify-content: space-between; margin: 2px 0;">
+            <span>TOTAL TAGIHAN:</span>
             <span class="thermal-sum-val font-bold" style="font-weight: 700; font-size: 12.5px;">${this.store.formatRupiah(tx.amount)}</span>
           </div>
           <div class="d-flex justify-between thermal-sum-row" style="display: flex; justify-content: space-between; margin: 2px 0;">
@@ -477,8 +487,18 @@ class ExportManager {
           </div>
 
           <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.85rem; background: #ffffff;">
+            ${(tx.discount > 0) ? `
             <div class="total-row" style="display: flex; justify-content: space-between; font-size: 0.85rem; padding: 0.25rem 0;">
-              <span>Total Nilai Transaksi:</span>
+              <span>Subtotal Belanja:</span>
+              <span>${this.store.formatRupiah(tx.subtotal || (tx.amount + tx.discount))}</span>
+            </div>
+            <div class="total-row" style="display: flex; justify-content: space-between; font-size: 0.85rem; padding: 0.25rem 0; color: #dc2626;">
+              <span>Diskon / Potongan Harga:</span>
+              <span><strong>-${this.store.formatRupiah(tx.discount)}</strong></span>
+            </div>
+            ` : ''}
+            <div class="total-row" style="display: flex; justify-content: space-between; font-size: 0.85rem; padding: 0.25rem 0;">
+              <span>Total Tagihan (Netto):</span>
               <span><strong>${this.store.formatRupiah(tx.amount)}</strong></span>
             </div>
             ${(tx.paymentMethod === 'cash') ? `

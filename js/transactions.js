@@ -118,6 +118,8 @@ class TransactionStore {
       supplier: (txData.supplier || "").trim(),
       phone: (txData.phone || "").trim(),
       amount: totalAmount,
+      subtotal: Number(txData.subtotal) || totalAmount,
+      discount: Number(txData.discount) || 0,
       cogs: totalCOGS,
       paidAmount: paidAmount,
       tenderedAmount: tenderedAmount,

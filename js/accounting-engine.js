@@ -23,6 +23,12 @@ class AccountingEngine {
       const savedCOA = localStorage.getItem(STORAGE_KEYS_ACCOUNTING.COA);
       if (savedCOA) {
         this.coa = JSON.parse(savedCOA);
+        DEFAULT_COA.forEach(d => {
+          if (!this.coa.some(c => c.code === d.code)) {
+            this.coa.push({ ...d });
+          }
+        });
+        this.saveCOA();
       } else {
         this.coa = JSON.parse(JSON.stringify(DEFAULT_COA));
         this.saveCOA();
@@ -163,8 +169,10 @@ class AccountingEngine {
 
       if (tx.type === 'in') {
         const lines = [];
+        const discount = Number(tx.discount) || 0;
+        const grossAmount = discount > 0 ? (amount + discount) : amount;
 
-        // 1. Kas / Bank / Piutang Masuk (Sisi Debit)
+        // 1. Kas / Bank / Piutang Masuk (Sisi Debit - Sebesar Nominal Bersih)
         if (tx.paymentMethod === 'cash') {
           lines.push({ accountCode: '1101', debit: amount, credit: 0, desc: 'Penerimaan Kasir Tunai' });
         } else if (tx.paymentMethod === 'transfer') {
@@ -183,12 +191,17 @@ class AccountingEngine {
           lines.push({ accountCode: '1101', debit: amount, credit: 0, desc: 'Penerimaan Kasir' });
         }
 
-        // 2. Pendapatan Penjualan (Sisi Kredit)
+        // 2. Potongan / Diskon Penjualan (Sisi Debit - Akun Kontra Pendapatan 4102)
+        if (discount > 0) {
+          lines.push({ accountCode: '4102', debit: discount, credit: 0, desc: 'Potongan / Diskon Penjualan' });
+        }
+
+        // 3. Pendapatan Penjualan (Sisi Kredit - Nilai Bruto Penjualan)
         const revenueCode = tx.category === 'ongkir' ? '4201' : '4101';
         const revDesc = tx.category === 'ongkir' ? 'Pendapatan Ongkir Truk' : 'Pendapatan Penjualan Material';
-        lines.push({ accountCode: revenueCode, debit: 0, credit: amount, desc: revDesc });
+        lines.push({ accountCode: revenueCode, debit: 0, credit: grossAmount, desc: revDesc });
 
-        // 3. Beban Pokok Penjualan (HPP) & Pengurangan Stok Persediaan
+        // 4. Beban Pokok Penjualan (HPP) & Pengurangan Stok Persediaan
         if (cogs > 0 && tx.category !== 'ongkir') {
           lines.push({ accountCode: '5101', debit: cogs, credit: 0, desc: 'Harga Pokok Penjualan (HPP)' });
           lines.push({ accountCode: '1104', debit: 0, credit: cogs, desc: 'Pengurangan Stok Persediaan' });
@@ -578,8 +591,9 @@ class AccountingEngine {
       if (val === 0) return;
 
       if (acc.category === 'pendapatan') {
-        revenues.push({ code: acc.code, name: acc.name, amount: val });
-        totalRevenue += val;
+        const isContra = acc.normalBalance === 'debit';
+        revenues.push({ code: acc.code, name: acc.name, amount: val, isContra });
+        totalRevenue += isContra ? -val : val;
       } else if (acc.category === 'hpp') {
         cogs.push({ code: acc.code, name: acc.name, amount: val });
         totalCOGS += val;

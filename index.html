@@ -1061,7 +1061,17 @@
 
           <div class="form-grid mt-3" style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
             <div class="form-group">
-              <label class="form-label">Total Belanja (Tagihan):</label>
+              <label class="form-label">Subtotal Belanja (Sebelum Diskon):</label>
+              <input type="number" id="saleSubtotalAmount" class="form-control font-bold" min="0" step="100" placeholder="0" readonly style="background: var(--bg-subtle);" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label font-bold text-danger">🎟️ Diskon / Potongan Harga (Rp):</label>
+              <input type="number" id="saleDiscountAmount" class="form-control font-bold text-danger" min="0" step="100" placeholder="Contoh: 50000" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label font-bold text-success">Total Tagihan Bersih (Rp):</label>
               <input type="number" id="saleTotalAmount" class="form-control font-bold text-success" min="0" step="100" placeholder="0" required />
             </div>
 

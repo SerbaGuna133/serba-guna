@@ -58,6 +58,7 @@ const DEFAULT_COA = [
 
   // 4000 - PENDAPATAN
   { code: "4101", name: "Pendapatan Penjualan Material Bangunan", category: "pendapatan", normalBalance: "kredit", isCustom: false },
+  { code: "4102", name: "Potongan Penjualan & Diskon", category: "pendapatan", normalBalance: "debit", isCustom: false },
   { code: "4201", name: "Pendapatan Ongkos Kirim Armada Truk", category: "pendapatan", normalBalance: "kredit", isCustom: false },
   { code: "4301", name: "Pendapatan Lain-lain", category: "pendapatan", normalBalance: "kredit", isCustom: false },
 
