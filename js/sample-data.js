@@ -73,22 +73,23 @@ const DEFAULT_COA = [
   { code: "6199", name: "Beban Operasional Lain-lain", category: "beban_operasional", normalBalance: "debit", isCustom: false }
 ];
 
-// 2. Kategori Material Bangunan
+// 2. Kategori Material Bangunan & Operasional
 const MATERIAL_CATEGORIES = [
-  { id: "semen", name: "Semen & Mortar", icon: "🧱", color: "#d97706" },
-  { id: "besi", name: "Besi, Baja & Wiremesh", icon: "🏗️", color: "#475569" },
-  { id: "pasir", name: "Pasir, Batu & Bata", icon: "🪨", color: "#b45309" },
-  { id: "kayu", name: "Kayu, Triplek & Balok", icon: "🪵", color: "#854d0e" },
-  { id: "cat", name: "Cat, Thinner & Anti Bocor", icon: "🎨", color: "#0284c7" },
-  { id: "pipa", name: "Pipa PVC, Kran & Sanitari", icon: "🚰", color: "#0891b2" },
-  { id: "keramik", name: "Keramik, Granit & Semen Warna", icon: "🔲", color: "#059669" },
-  { id: "atap", name: "Atap, Genteng & Spandek", icon: "🏠", color: "#e11d48" },
-  { id: "hardware", name: "Paku, Baut, Gembok & Alat Tukang", icon: "🔨", color: "#6b7280" },
-  { id: "listrik", name: "Kabel & Perlengkapan Listrik", icon: "💡", color: "#ca8a04" },
-  { id: "ongkir", name: "Ongkos Kirim Truk / Pick-up", icon: "🚚", color: "#16a34a" },
-  { id: "operasional", name: "Operasional & Gaji Karyawan/Kuli", icon: "👥", color: "#dc2626" },
-  { id: "armada", name: "BBM Solar & Servis Kendaraan Toko", icon: "⛽", color: "#ea580c" },
-  { id: "lainnya", name: "Lain-lain", icon: "📦", color: "#64748b" }
+  { id: "semen", name: "Semen & Mortar", icon: "🧱", color: "#d97706", group: "material" },
+  { id: "besi", name: "Besi, Baja & Wiremesh", icon: "🏗️", color: "#475569", group: "material" },
+  { id: "pasir", name: "Pasir, Batu & Bata", icon: "🪨", color: "#b45309", group: "material" },
+  { id: "kayu", name: "Kayu, Triplek & Balok", icon: "🪵", color: "#854d0e", group: "material" },
+  { id: "cat", name: "Cat, Thinner & Anti Bocor", icon: "🎨", color: "#0284c7", group: "material" },
+  { id: "pipa", name: "Pipa PVC, Kran & Sanitari", icon: "🚰", color: "#0891b2", group: "material" },
+  { id: "keramik", name: "Keramik, Granit & Semen Warna", icon: "🔲", color: "#059669", group: "material" },
+  { id: "atap", name: "Atap, Genteng & Spandek", icon: "🏠", color: "#e11d48", group: "material" },
+  { id: "hardware", name: "Paku, Baut, Gembok & Alat Tukang", icon: "🔨", color: "#6b7280", group: "material" },
+  { id: "listrik", name: "Kabel & Perlengkapan Listrik", icon: "💡", color: "#ca8a04", group: "material" },
+  { id: "lainnya", name: "Material Lain-lain", icon: "📦", color: "#64748b", group: "material" },
+  { id: "ongkir", name: "Ongkos Kirim Truk / Pick-up", icon: "🚚", color: "#16a34a", group: "shipping" },
+  { id: "operasional", name: "Operasional & Gaji Karyawan/Kuli", icon: "👥", color: "#dc2626", group: "expense" },
+  { id: "armada", name: "BBM Solar & Servis Kendaraan Toko", icon: "⛽", color: "#ea580c", group: "expense" },
+  { id: "beban_lain", name: "Biaya Operasional Toko Lainnya", icon: "🧾", color: "#78716c", group: "expense" }
 ];
 
 // 3. Master Inventori Awal (Kosong 0)
