@@ -345,33 +345,30 @@ class AccountingEngine {
       return journals;
     }
 
-    const hasPurchases = window.transactionStore && window.transactionStore.transactions.some(t => t.type === 'out');
-    if (hasPurchases) return journals;
-
     window.inventoryStore.products.forEach(p => {
-      const stock = Number(p.stock) || 0;
+      const initStock = Number(p.initialStock !== undefined ? p.initialStock : p.stock) || 0;
       const buyPrice = Number(p.buyPrice) || 0;
-      const totalAsset = stock * buyPrice;
+      const totalAsset = initStock * buyPrice;
 
       if (totalAsset > 0) {
-        const dateStr = p.updatedAt ? p.updatedAt.split('T')[0] : new Date().toISOString().split('T')[0];
+        const dateStr = p.createdAt ? p.createdAt.split('T')[0] : (p.updatedAt ? p.updatedAt.split('T')[0] : new Date().toISOString().split('T')[0]);
         journals.push({
           id: `JRN-STK-${p.id}`,
           date: dateStr,
           voucherNo: `STK-${p.id}`,
-          desc: `Saldo Awal Persediaan Material: ${p.name} (${stock} ${p.unit})`,
+          desc: `Saldo Awal Persediaan Material: ${p.name} (${initStock} ${p.unit} @ Rp ${buyPrice.toLocaleString('id-ID')})`,
           lines: [
             {
               accountCode: '1104',
               debit: totalAsset,
               credit: 0,
-              desc: `Saldo Awal Stok Material: ${p.name}`
+              desc: `Saldo Awal Stok Persediaan: ${p.name}`
             },
             {
               accountCode: '3101',
               debit: 0,
               credit: totalAsset,
-              desc: `Modal Awal Pemilik Toko`
+              desc: `Modal Awal Persediaan Pemilik Toko`
             }
           ],
           isAuto: true

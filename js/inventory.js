@@ -77,9 +77,11 @@ class InventoryStore {
       packRatio: packRatio,
       packBuyPrice: packBuyPrice,
       packSellPrice: packSellPrice,
+      initialStock: Number(data.stock) || 0,
       stock: Number(data.stock) || 0, // Selalu disimpan dalam unit dasar (Pcs)
       minStock: Number(data.minStock) || 5,
       location: data.location || "Gudang Utama",
+      createdAt: data.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
