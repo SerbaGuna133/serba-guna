@@ -1174,34 +1174,32 @@ class AppController {
     if (m) m.classList.remove('active');
   }
 
-  // 1. Modal Transaksi & Item Builder POS
-  openNewTransactionModal(type = 'in', method = 'cash') {
+  // 1. MODAL KASIR PENJUALAN MATERIAL (POS)
+  openNewSaleModal() {
     this.editingTxId = null;
-    const form = document.getElementById('formNewTransaction');
+    const form = document.getElementById('formNewSale');
     if (form) form.reset();
 
-    document.getElementById('modalTxTitle').innerHTML = `➕ Input Transaksi Penjualan / Pembelian`;
-    document.getElementById('modalTxType').value = type;
-    document.getElementById('modalTxPaymentMethod').value = method;
-    document.getElementById('modalTxDate').value = new Date().toISOString().split('T')[0];
+    const dateInput = document.getElementById('saleDate');
+    if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
 
-    const container = document.getElementById('itemsBuilderContainer');
+    const container = document.getElementById('saleItemsBuilderContainer');
     if (container) container.innerHTML = '';
-    this.addItemRow(); // Tambah 1 baris awal
+    this.addSaleItemRow();
 
-    this.handleTxTypeOrMethodChange();
-    this.openModal('modalNewTransaction');
+    this.handleSalePaymentMethodChange();
+    this.openModal('modalNewSale');
   }
 
-  addItemRow(name = '', qty = 1, unit = 'Pcs', price = 0, productId = '', unitRatio = 1) {
-    const container = document.getElementById('itemsBuilderContainer');
+  addSaleItemRow(name = '', qty = 1, unit = 'Pcs', price = 0, productId = '', unitRatio = 1) {
+    const container = document.getElementById('saleItemsBuilderContainer');
     if (!container) return;
 
     const row = document.createElement('div');
     row.className = 'items-builder-row';
 
     const productsList = this.inventory ? this.inventory.products : [];
-    const datalistId = `dl-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+    const datalistId = `dl-sale-${Date.now()}-${Math.floor(Math.random()*1000)}`;
 
     const matched = productsList.find(p => (productId && p.id === productId) || (name && p.name.toLowerCase() === name.toLowerCase()));
     const units = matched ? this.inventory.getProductUnits(matched) : [];
@@ -1219,7 +1217,7 @@ class AppController {
 
     row.innerHTML = `
       <div>
-        <input type="text" list="${datalistId}" class="form-control item-name" placeholder="Ketik / pilih barang material..." value="${name}" required />
+        <input type="text" list="${datalistId}" class="form-control item-name" placeholder="Ketik / cari nama material..." value="${name}" required />
         <datalist id="${datalistId}">
           ${productsList.map(p => {
             const packInfo = p.hasMultiUnit ? ` | 📦 1 ${p.packUnit}=${p.packRatio} ${p.unit}` : '';
@@ -1236,7 +1234,7 @@ class AppController {
         <div class="item-qty-warning text-xs text-danger font-bold" style="display: none; margin-top: 2px;"></div>
       </div>
       <div class="item-unit-wrapper">${unitControlHTML}</div>
-      <input type="number" class="form-control item-price" placeholder="Harga (Rp)" value="${price}" min="0" step="100" required />
+      <input type="number" class="form-control item-price" placeholder="Harga Jual (Rp)" value="${price}" min="0" step="100" required />
       <button type="button" class="btn-icon-only text-danger btn-remove-item" title="Hapus Baris" style="margin-top: 5px;">✕</button>
     `;
 
@@ -1254,22 +1252,21 @@ class AppController {
         return;
       }
 
-      const isSale = document.getElementById('modalTxType')?.value === 'in';
       const currentQty = parseFloat(qtyInput.value) || 0;
       const ratio = parseFloat(row.querySelector('.item-unit-ratio')?.value) || 1;
       const requiredBase = currentQty * ratio;
 
       // Badge info stok
       if (prod.stock <= 0) {
-        stockBadge.innerHTML = `<span class="text-danger font-bold">❌ Stok Gudang Habis (0 ${prod.unit})</span>`;
+        stockBadge.innerHTML = `<span class="text-danger font-bold">❌ Stok Habis (0 ${prod.unit})</span>`;
       } else if (prod.hasMultiUnit && prod.packRatio > 1) {
-        stockBadge.innerHTML = `<span class="text-success font-semibold">📦 Sisa Stok: <strong>${prod.stock} ${prod.unit}</strong> (≈ ${(prod.stock / prod.packRatio).toFixed(1)} ${prod.packUnit})</span>`;
+        stockBadge.innerHTML = `<span class="text-success font-semibold">📦 Sisa: <strong>${prod.stock} ${prod.unit}</strong> (≈ ${(prod.stock / prod.packRatio).toFixed(1)} ${prod.packUnit})</span>`;
       } else {
-        stockBadge.innerHTML = `<span class="text-success font-semibold">📦 Sisa Stok: <strong>${prod.stock} ${prod.unit}</strong></span>`;
+        stockBadge.innerHTML = `<span class="text-success font-semibold">📦 Sisa: <strong>${prod.stock} ${prod.unit}</strong></span>`;
       }
 
       // Validasi batas stok saat penjualan kasir
-      if (isSale && requiredBase > prod.stock) {
+      if (requiredBase > prod.stock) {
         qtyInput.classList.add('stock-exceeded');
         if (qtyWarning) {
           qtyWarning.style.display = 'block';
@@ -1308,7 +1305,7 @@ class AppController {
           row.querySelector('.item-price').value = opt.dataset.price || 0;
           row.querySelector('.item-cogs').value = opt.dataset.buy || 0;
           validateAndRenderStock(prod);
-          this.recalculateItemsTotal();
+          this.recalculateSaleItemsTotal();
         });
       } else {
         unitWrapper.innerHTML = `<input type="text" class="form-control item-unit" placeholder="Satuan" value="${prod.unit || 'Pcs'}" />`;
@@ -1317,7 +1314,7 @@ class AppController {
         row.querySelector('.item-cogs').value = prod.buyPrice;
       }
       validateAndRenderStock(prod);
-      this.recalculateItemsTotal();
+      this.recalculateSaleItemsTotal();
     };
 
     nameInput.addEventListener('input', (e) => {
@@ -1335,11 +1332,11 @@ class AppController {
       const prodId = row.querySelector('.item-product-id')?.value;
       const prod = productsList.find(p => p.id === prodId);
       validateAndRenderStock(prod);
-      this.recalculateItemsTotal();
+      this.recalculateSaleItemsTotal();
     });
 
     row.querySelectorAll('input').forEach(inp => {
-      inp.addEventListener('input', () => this.recalculateItemsTotal());
+      inp.addEventListener('input', () => this.recalculateSaleItemsTotal());
     });
 
     const initialSel = row.querySelector('.item-unit-select');
@@ -1352,7 +1349,7 @@ class AppController {
         const prodId = row.querySelector('.item-product-id')?.value;
         const prod = productsList.find(p => p.id === prodId);
         validateAndRenderStock(prod);
-        this.recalculateItemsTotal();
+        this.recalculateSaleItemsTotal();
       });
     }
 
@@ -1362,14 +1359,14 @@ class AppController {
 
     row.querySelector('.btn-remove-item').addEventListener('click', () => {
       row.remove();
-      this.recalculateItemsTotal();
+      this.recalculateSaleItemsTotal();
     });
 
     container.appendChild(row);
   }
 
-  recalculateItemsTotal() {
-    const container = document.getElementById('itemsBuilderContainer');
+  recalculateSaleItemsTotal() {
+    const container = document.getElementById('saleItemsBuilderContainer');
     if (!container) return;
 
     let total = 0;
@@ -1381,81 +1378,273 @@ class AppController {
     });
 
     if (total > 0) {
-      document.getElementById('modalTxAmount').value = total;
-      this.handleAmountChange();
+      const elTotal = document.getElementById('saleTotalAmount');
+      if (elTotal) elTotal.value = total;
+      this.handleSaleAmountChange();
     }
   }
 
-  handleTxTypeOrMethodChange() {
-    const type = document.getElementById('modalTxType').value;
-    const methodSelect = document.getElementById('modalTxPaymentMethod');
-    let currentMethod = methodSelect.value;
-    const contactLabel = document.getElementById('modalTxContactLabel');
-    const contactInput = document.getElementById('modalTxContactName');
-    const groupDueDate = document.getElementById('groupDueDate');
-    const groupDebtCalc = document.getElementById('groupDebtCalc');
-    const labelPaidAmount = document.getElementById('labelPaidAmount');
+  handleSalePaymentMethodChange() {
+    const method = document.getElementById('salePaymentMethod')?.value || 'cash';
+    const groupDueDate = document.getElementById('groupSaleDueDate');
+    const groupDebtCalc = document.getElementById('groupSaleDebtCalc');
+    const labelPaidAmount = document.getElementById('labelSalePaidAmount');
 
-    if (type === 'in') {
-      contactLabel.textContent = 'Nama Pelanggan / Kontraktor Proyek:';
-      contactInput.placeholder = 'Contoh: Pak Haji Bambang (Proyek Ruko)';
-      if (currentMethod === 'hutang') currentMethod = 'piutang';
-
-      methodSelect.innerHTML = `
-        <option value="cash" ${currentMethod === 'cash' ? 'selected' : ''}>💵 Tunai Kasir Langsung (Kas Toko)</option>
-        <option value="transfer" ${currentMethod === 'transfer' ? 'selected' : ''}>💳 Transfer Bank BCA / QRIS / EDC</option>
-        <option value="piutang" ${currentMethod === 'piutang' ? 'selected' : ''}>📑 Bon Pelanggan / Piutang Proyek (Bisa DP / Bayar Nanti)</option>
-      `;
-    } else {
-      contactLabel.textContent = 'Nama Supplier / Distributor Pabrik:';
-      contactInput.placeholder = 'Contoh: Distributor Semen Gresik / Pabrik Besi';
-      if (currentMethod === 'piutang') currentMethod = 'hutang';
-
-      methodSelect.innerHTML = `
-        <option value="cash" ${currentMethod === 'cash' ? 'selected' : ''}>💵 Tunai Kasir (Keluar Kas Toko)</option>
-        <option value="transfer" ${currentMethod === 'transfer' ? 'selected' : ''}>💳 Transfer Bank BCA (Keluar Rekening Bank)</option>
-        <option value="hutang" ${currentMethod === 'hutang' ? 'selected' : ''}>🤝 Tempo Supplier / Hutang Dagang (Distributor)</option>
-      `;
-    }
-
-    const activeMethod = methodSelect.value;
-
-    if (activeMethod === 'piutang' || activeMethod === 'hutang') {
-      groupDueDate.style.display = 'block';
-      groupDebtCalc.style.display = 'block';
-      labelPaidAmount.textContent = activeMethod === 'piutang' 
-        ? 'Uang Muka / DP yang Diterima Saat Ini (Rp):' 
-        : 'Uang Muka / DP yang Dibayar ke Supplier (Rp):';
-      const dueInput = document.getElementById('modalTxDueDate');
-      if (!dueInput.value) {
+    if (method === 'piutang') {
+      if (groupDueDate) groupDueDate.style.display = 'block';
+      if (groupDebtCalc) groupDebtCalc.style.display = 'block';
+      if (labelPaidAmount) labelPaidAmount.textContent = 'Uang Muka / DP yang Diterima (Rp):';
+      const dueInput = document.getElementById('saleDueDate');
+      if (dueInput && !dueInput.value) {
         const d = new Date();
         d.setDate(d.getDate() + 14);
         dueInput.value = d.toISOString().split('T')[0];
       }
     } else {
-      groupDueDate.style.display = 'none';
-      groupDebtCalc.style.display = 'none';
-      labelPaidAmount.textContent = 'Jumlah Dibayar (Rp):';
+      if (groupDueDate) groupDueDate.style.display = 'none';
+      if (groupDebtCalc) groupDebtCalc.style.display = 'none';
+      if (labelPaidAmount) labelPaidAmount.textContent = 'Jumlah Uang Diterima / Lunas (Rp):';
     }
 
-    this.handleAmountChange();
+    this.handleSaleAmountChange();
   }
 
-  handleAmountChange() {
-    const totalAmount = parseFloat(document.getElementById('modalTxAmount').value) || 0;
-    const method = document.getElementById('modalTxPaymentMethod').value;
-    const paidInput = document.getElementById('modalTxPaidAmount');
+  handleSaleAmountChange() {
+    const totalAmount = parseFloat(document.getElementById('saleTotalAmount')?.value) || 0;
+    const method = document.getElementById('salePaymentMethod')?.value || 'cash';
+    const paidInput = document.getElementById('salePaidAmount');
 
     if (method === 'cash' || method === 'transfer') {
-      paidInput.value = totalAmount;
+      if (paidInput) paidInput.value = totalAmount;
     }
 
-    const paidAmount = parseFloat(paidInput.value) || 0;
+    const paidAmount = parseFloat(paidInput?.value) || 0;
     const debt = Math.max(0, totalAmount - paidAmount);
-    const displayEl = document.getElementById('modalTxDebtDisplay');
+    const displayEl = document.getElementById('saleDebtDisplay');
     if (displayEl) {
       displayEl.textContent = this.store.formatRupiah(debt);
     }
+  }
+
+  // 2. MODAL KULAKAN & PEMBELIAN STOK MASUK
+  openNewPurchaseModal(prefilledProductId = null) {
+    this.editingTxId = null;
+    const form = document.getElementById('formNewPurchase');
+    if (form) form.reset();
+
+    const dateInput = document.getElementById('purchaseDate');
+    if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+
+    const container = document.getElementById('purchaseItemsBuilderContainer');
+    if (container) container.innerHTML = '';
+
+    if (prefilledProductId) {
+      const prod = this.inventory?.products.find(p => p.id === prefilledProductId);
+      if (prod) {
+        this.addPurchaseItemRow(prod.name, 10, prod.hasMultiUnit ? prod.packUnit : prod.unit, prod.hasMultiUnit && prod.packBuyPrice ? prod.packBuyPrice : prod.buyPrice, prod.id, prod.hasMultiUnit ? prod.packRatio : 1);
+      } else {
+        this.addPurchaseItemRow();
+      }
+    } else {
+      this.addPurchaseItemRow();
+    }
+
+    this.handlePurchasePaymentMethodChange();
+    this.openModal('modalNewPurchase');
+  }
+
+  addPurchaseItemRow(name = '', qty = 1, unit = 'Pcs', price = 0, productId = '', unitRatio = 1) {
+    const container = document.getElementById('purchaseItemsBuilderContainer');
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.className = 'items-builder-row';
+
+    const productsList = this.inventory ? this.inventory.products : [];
+    const datalistId = `dl-purchase-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+
+    const matched = productsList.find(p => (productId && p.id === productId) || (name && p.name.toLowerCase() === name.toLowerCase()));
+    const units = matched ? this.inventory.getProductUnits(matched) : [];
+
+    let unitControlHTML = '';
+    if (units.length > 1) {
+      unitControlHTML = `
+        <select class="form-control item-unit-select">
+          ${units.map(u => `<option value="${u.unitName}" data-ratio="${u.ratio}" data-price="${u.buyPrice}" data-sell="${u.sellPrice}" ${u.unitName === unit ? 'selected' : ''}>${u.label} (Modal: Rp ${u.buyPrice})</option>`).join('')}
+        </select>
+      `;
+    } else {
+      unitControlHTML = `<input type="text" class="form-control item-unit" placeholder="Satuan" value="${unit || 'Pcs'}" />`;
+    }
+
+    row.innerHTML = `
+      <div>
+        <input type="text" list="${datalistId}" class="form-control item-name" placeholder="Ketik / pilih barang yang dibeli..." value="${name}" required />
+        <datalist id="${datalistId}">
+          ${productsList.map(p => {
+            const packInfo = p.hasMultiUnit ? ` | 📦 1 ${p.packUnit}=${p.packRatio} ${p.unit}` : '';
+            return `<option value="${p.name}" data-id="${p.id}" data-unit="${p.unit}" data-price="${p.buyPrice}">Stok Saat Ini: ${p.stock} ${p.unit}${packInfo} | Modal Beli: Rp ${p.buyPrice}</option>`;
+          }).join('')}
+        </datalist>
+        <input type="hidden" class="item-product-id" value="${productId || (matched ? matched.id : '')}" />
+        <input type="hidden" class="item-unit-ratio" value="${unitRatio || 1}" />
+        <div class="item-stock-badge"></div>
+      </div>
+      <div>
+        <input type="number" class="form-control item-qty" placeholder="Qty Masuk" value="${qty}" min="0.1" step="any" required />
+      </div>
+      <div class="item-unit-wrapper">${unitControlHTML}</div>
+      <input type="number" class="form-control item-price" placeholder="Harga Beli / Modal (Rp)" value="${price}" min="0" step="100" required />
+      <button type="button" class="btn-icon-only text-danger btn-remove-item" title="Hapus Baris" style="margin-top: 5px;">✕</button>
+    `;
+
+    const nameInput = row.querySelector('.item-name');
+    const unitWrapper = row.querySelector('.item-unit-wrapper');
+    const stockBadge = row.querySelector('.item-stock-badge');
+
+    const updateStockBadge = (prod) => {
+      if (!prod) {
+        stockBadge.innerHTML = '';
+        return;
+      }
+      stockBadge.innerHTML = `<span class="text-muted">📦 Stok Saat Ini: <strong>${prod.stock} ${prod.unit}</strong></span>`;
+    };
+
+    const updateUnitControl = (prod) => {
+      if (!prod) {
+        unitWrapper.innerHTML = `<input type="text" class="form-control item-unit" placeholder="Satuan" value="Pcs" />`;
+        row.querySelector('.item-unit-ratio').value = 1;
+        updateStockBadge(null);
+        return;
+      }
+
+      const availableUnits = this.inventory.getProductUnits(prod);
+      if (availableUnits.length > 1) {
+        unitWrapper.innerHTML = `
+          <select class="form-control item-unit-select">
+            ${availableUnits.map(u => `<option value="${u.unitName}" data-ratio="${u.ratio}" data-price="${u.buyPrice}">${u.label} (Modal: Rp ${u.buyPrice})</option>`).join('')}
+          </select>
+        `;
+        const sel = unitWrapper.querySelector('.item-unit-select');
+        const selectedOpt = sel.options[sel.selectedIndex];
+        row.querySelector('.item-unit-ratio').value = selectedOpt.dataset.ratio || 1;
+        row.querySelector('.item-price').value = selectedOpt.dataset.price || prod.buyPrice;
+
+        sel.addEventListener('change', (e) => {
+          const opt = e.target.options[e.target.selectedIndex];
+          row.querySelector('.item-unit-ratio').value = opt.dataset.ratio || 1;
+          row.querySelector('.item-price').value = opt.dataset.price || 0;
+          this.recalculatePurchaseItemsTotal();
+        });
+      } else {
+        unitWrapper.innerHTML = `<input type="text" class="form-control item-unit" placeholder="Satuan" value="${prod.unit || 'Pcs'}" />`;
+        row.querySelector('.item-unit-ratio').value = 1;
+        row.querySelector('.item-price').value = prod.buyPrice;
+      }
+      updateStockBadge(prod);
+      this.recalculatePurchaseItemsTotal();
+    };
+
+    nameInput.addEventListener('input', (e) => {
+      const val = e.target.value;
+      const found = productsList.find(p => p.name.toLowerCase() === val.toLowerCase());
+      if (found) {
+        row.querySelector('.item-product-id').value = found.id;
+        updateUnitControl(found);
+      } else {
+        updateStockBadge(null);
+      }
+    });
+
+    row.querySelectorAll('input').forEach(inp => {
+      inp.addEventListener('input', () => this.recalculatePurchaseItemsTotal());
+    });
+
+    const initialSel = row.querySelector('.item-unit-select');
+    if (initialSel) {
+      initialSel.addEventListener('change', (e) => {
+        const opt = e.target.options[e.target.selectedIndex];
+        row.querySelector('.item-unit-ratio').value = opt.dataset.ratio || 1;
+        row.querySelector('.item-price').value = opt.dataset.price || 0;
+        this.recalculatePurchaseItemsTotal();
+      });
+    }
+
+    if (matched) {
+      updateStockBadge(matched);
+    }
+
+    row.querySelector('.btn-remove-item').addEventListener('click', () => {
+      row.remove();
+      this.recalculatePurchaseItemsTotal();
+    });
+
+    container.appendChild(row);
+  }
+
+  recalculatePurchaseItemsTotal() {
+    const container = document.getElementById('purchaseItemsBuilderContainer');
+    if (!container) return;
+
+    let total = 0;
+    const rows = container.querySelectorAll('.items-builder-row');
+    rows.forEach(row => {
+      const qty = parseFloat(row.querySelector('.item-qty')?.value) || 0;
+      const price = parseFloat(row.querySelector('.item-price')?.value) || 0;
+      total += (qty * price);
+    });
+
+    if (total > 0) {
+      const elTotal = document.getElementById('purchaseTotalAmount');
+      if (elTotal) elTotal.value = total;
+      this.handlePurchaseAmountChange();
+    }
+  }
+
+  handlePurchasePaymentMethodChange() {
+    const method = document.getElementById('purchasePaymentMethod')?.value || 'cash';
+    const groupDueDate = document.getElementById('groupPurchaseDueDate');
+    const groupDebtCalc = document.getElementById('groupPurchaseDebtCalc');
+    const labelPaidAmount = document.getElementById('labelPurchasePaidAmount');
+
+    if (method === 'hutang') {
+      if (groupDueDate) groupDueDate.style.display = 'block';
+      if (groupDebtCalc) groupDebtCalc.style.display = 'block';
+      if (labelPaidAmount) labelPaidAmount.textContent = 'Uang Muka / DP ke Supplier (Rp):';
+      const dueInput = document.getElementById('purchaseDueDate');
+      if (dueInput && !dueInput.value) {
+        const d = new Date();
+        d.setDate(d.getDate() + 30); // Default tempo distributor 30 hari
+        dueInput.value = d.toISOString().split('T')[0];
+      }
+    } else {
+      if (groupDueDate) groupDueDate.style.display = 'none';
+      if (groupDebtCalc) groupDebtCalc.style.display = 'none';
+      if (labelPaidAmount) labelPaidAmount.textContent = 'Jumlah Dibayar ke Supplier (Rp):';
+    }
+
+    this.handlePurchaseAmountChange();
+  }
+
+  handlePurchaseAmountChange() {
+    const totalAmount = parseFloat(document.getElementById('purchaseTotalAmount')?.value) || 0;
+    const method = document.getElementById('purchasePaymentMethod')?.value || 'cash';
+    const paidInput = document.getElementById('purchasePaidAmount');
+
+    if (method === 'cash' || method === 'transfer') {
+      if (paidInput) paidInput.value = totalAmount;
+    }
+
+    const paidAmount = parseFloat(paidInput?.value) || 0;
+    const debt = Math.max(0, totalAmount - paidAmount);
+    const displayEl = document.getElementById('purchaseDebtDisplay');
+    if (displayEl) {
+      displayEl.textContent = this.store.formatRupiah(debt);
+    }
+  }
+
+  openNewTransactionModal() {
+    this.openNewSaleModal();
   }
 
   // 2. Modal Master Produk Inventori
@@ -1938,17 +2127,28 @@ class AppController {
     document.getElementById('btnOpenManualJournalModal')?.addEventListener('click', () => this.openManualJournalModal());
     document.getElementById('btnAddJournalLine')?.addEventListener('click', () => this.addJournalLineRow());
 
-    // Modal Transactions Events
-    document.getElementById('btnAddItemRow')?.addEventListener('click', () => this.addItemRow());
-    document.getElementById('modalTxType')?.addEventListener('change', () => this.handleTxTypeOrMethodChange());
-    document.getElementById('modalTxPaymentMethod')?.addEventListener('change', () => this.handleTxTypeOrMethodChange());
-    document.getElementById('modalTxAmount')?.addEventListener('input', () => this.handleAmountChange());
-    document.getElementById('modalTxPaidAmount')?.addEventListener('input', () => this.handleAmountChange());
+    // Quick Action Modal Openers
+    document.getElementById('btnOpenNewSaleModal')?.addEventListener('click', () => this.openNewSaleModal());
+    document.getElementById('btnOpenNewPurchaseModal')?.addEventListener('click', () => this.openNewPurchaseModal());
 
-    // Form Submissions
-    document.getElementById('formNewTransaction')?.addEventListener('submit', async (e) => {
+    // Sales Form Events
+    document.getElementById('btnAddSaleItemRow')?.addEventListener('click', () => this.addSaleItemRow());
+    document.getElementById('salePaymentMethod')?.addEventListener('change', () => this.handleSalePaymentMethodChange());
+    document.getElementById('saleTotalAmount')?.addEventListener('input', () => this.handleSaleAmountChange());
+    document.getElementById('salePaidAmount')?.addEventListener('input', () => this.handleSaleAmountChange());
+    document.getElementById('formNewSale')?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      await this.handleSaveTransaction();
+      await this.handleSaveSale();
+    });
+
+    // Purchase / Restock Form Events
+    document.getElementById('btnAddPurchaseItemRow')?.addEventListener('click', () => this.addPurchaseItemRow());
+    document.getElementById('purchasePaymentMethod')?.addEventListener('change', () => this.handlePurchasePaymentMethodChange());
+    document.getElementById('purchaseTotalAmount')?.addEventListener('input', () => this.handlePurchaseAmountChange());
+    document.getElementById('purchasePaidAmount')?.addEventListener('input', () => this.handlePurchaseAmountChange());
+    document.getElementById('formNewPurchase')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await this.handleSavePurchase();
     });
 
     document.getElementById('formNewProduct')?.addEventListener('submit', (e) => {
@@ -2053,12 +2253,11 @@ class AppController {
   }
 
   // ==================== FORM ACTIONS ====================
-  async handleSaveTransaction() {
-    const txType = document.getElementById('modalTxType').value;
+  async handleSaveSale() {
     const items = [];
     const stockErrors = [];
 
-    document.querySelectorAll('#itemsBuilderContainer .items-builder-row').forEach(row => {
+    document.querySelectorAll('#saleItemsBuilderContainer .items-builder-row').forEach(row => {
       const name = row.querySelector('.item-name')?.value.trim();
       const qty = parseFloat(row.querySelector('.item-qty')?.value) || 1;
       const unit = row.querySelector('.item-unit-select')?.value || row.querySelector('.item-unit')?.value.trim() || 'Pcs';
@@ -2069,57 +2268,110 @@ class AppController {
 
       if (name) {
         const totalBaseQty = qty * unitRatio;
-
-        // Validasi stok khusus Penjualan Kasir (Mencegah Stok Minus)
-        if (txType === 'in') {
-          const product = this.inventory.products.find(p => (productId && p.id === productId) || p.name.toLowerCase() === name.toLowerCase());
-          if (product && totalBaseQty > product.stock) {
-            stockErrors.push(`• ${product.name}: Diminta ${qty} ${unit} (setara ${totalBaseQty} ${product.unit}), tapi sisa stok di gudang hanya ada ${product.stock} ${product.unit}.`);
-          }
+        const product = this.inventory.products.find(p => (productId && p.id === productId) || p.name.toLowerCase() === name.toLowerCase());
+        if (product && totalBaseQty > product.stock) {
+          stockErrors.push(`• ${product.name}: Diminta ${qty} ${unit} (${totalBaseQty} ${product.unit}), tapi sisa stok di gudang hanya ada ${product.stock} ${product.unit}.`);
         }
 
         items.push({ id: productId, name, qty, unit, unitRatio, price, cogs, subtotal: qty * price });
       }
     });
 
-    // Batalkan penjualan jika ada barang yang melebihi sisa stok gudang
+    if (items.length === 0) {
+      alert("Silakan masukkan minimal 1 barang material yang dijual!");
+      return;
+    }
+
     if (stockErrors.length > 0) {
-      alert(`❌ TRANSAKSI PENJUALAN GAGAL (STOK TIDAK MENCUKUPI):\n\n${stockErrors.join('\n\n')}\n\nSolusi: Silakan kurangi jumlah penjualan atau lakukan stok opname/kulakan terlebih dahulu.`);
+      alert(`❌ TRANSAKSI PENJUALAN GAGAL (STOK TIDAK MENCUKUPI):\n\n${stockErrors.join('\n\n')}\n\nSolusi: Silakan kurangi jumlah penjualan atau lakukan kulakan/stok masuk terlebih dahulu.`);
       return;
     }
 
     const primaryCategory = (items[0] && items[0].id) ? (this.inventory?.products.find(p => p.id === items[0].id)?.category || 'lainnya') : 'lainnya';
 
     const txData = {
-      type: txType,
-      paymentMethod: document.getElementById('modalTxPaymentMethod').value,
+      type: 'in',
+      paymentMethod: document.getElementById('salePaymentMethod')?.value || 'cash',
       category: primaryCategory,
-      date: document.getElementById('modalTxDate').value,
-      title: document.getElementById('modalTxTitleInput').value,
-      customer: document.getElementById('modalTxContactName').value,
-      supplier: document.getElementById('modalTxContactName').value,
-      phone: document.getElementById('modalTxPhone').value,
-      amount: parseFloat(document.getElementById('modalTxAmount').value) || 0,
-      paidAmount: parseFloat(document.getElementById('modalTxPaidAmount').value) || 0,
-      dueDate: document.getElementById('modalTxDueDate').value || '',
-      notes: document.getElementById('modalTxNotes').value,
+      date: document.getElementById('saleDate')?.value || new Date().toISOString().split('T')[0],
+      title: document.getElementById('saleTitle')?.value.trim() || `Penjualan ${items[0]?.name}`,
+      customer: document.getElementById('saleCustomerName')?.value.trim() || 'Pelanggan Umum',
+      supplier: '',
+      phone: document.getElementById('saleCustomerPhone')?.value.trim() || '',
+      amount: parseFloat(document.getElementById('saleTotalAmount')?.value) || 0,
+      paidAmount: parseFloat(document.getElementById('salePaidAmount')?.value) || 0,
+      dueDate: document.getElementById('saleDueDate')?.value || '',
+      notes: document.getElementById('saleNotes')?.value.trim() || '',
       items: items
     };
 
     try {
       const saved = await this.store.addTransaction(txData);
-      this.closeModal('modalNewTransaction');
+      this.closeModal('modalNewSale');
       this.refreshCurrentView();
-      this.showToast(`Transaksi ${saved.id} berhasil dicatat & stok/jurnal otomatis terupdate!`);
+      this.showToast(`Penjualan ${saved.id} berhasil dicatat & stok otomatis terpotong!`);
 
       setTimeout(() => {
-        if (confirm(`Transaksi berhasil disimpan. Cetak Faktur / Nota Resmi sekarang?`)) {
+        if (confirm(`Penjualan berhasil disimpan. Cetak Faktur / Nota Resmi sekarang?`)) {
           this.openReceiptModal(saved.id);
         }
       }, 300);
     } catch (err) {
-      alert("Gagal menyimpan transaksi: " + err.message);
+      alert("Gagal menyimpan penjualan: " + err.message);
     }
+  }
+
+  async handleSavePurchase() {
+    const items = [];
+
+    document.querySelectorAll('#purchaseItemsBuilderContainer .items-builder-row').forEach(row => {
+      const name = row.querySelector('.item-name')?.value.trim();
+      const qty = parseFloat(row.querySelector('.item-qty')?.value) || 1;
+      const unit = row.querySelector('.item-unit-select')?.value || row.querySelector('.item-unit')?.value.trim() || 'Pcs';
+      const unitRatio = parseFloat(row.querySelector('.item-unit-ratio')?.value) || 1;
+      const price = parseFloat(row.querySelector('.item-price')?.value) || 0;
+      const productId = row.querySelector('.item-product-id')?.value || '';
+
+      if (name) {
+        items.push({ id: productId, name, qty, unit, unitRatio, price, cogs: price, subtotal: qty * price });
+      }
+    });
+
+    if (items.length === 0) {
+      alert("Silakan masukkan minimal 1 barang material yang dibeli / masuk gudang!");
+      return;
+    }
+
+    const primaryCategory = (items[0] && items[0].id) ? (this.inventory?.products.find(p => p.id === items[0].id)?.category || 'lainnya') : 'lainnya';
+
+    const txData = {
+      type: 'out',
+      paymentMethod: document.getElementById('purchasePaymentMethod')?.value || 'cash',
+      category: primaryCategory,
+      date: document.getElementById('purchaseDate')?.value || new Date().toISOString().split('T')[0],
+      title: document.getElementById('purchaseTitle')?.value.trim() || `Kulakan ${items[0]?.name}`,
+      customer: '',
+      supplier: document.getElementById('purchaseSupplierName')?.value.trim() || 'Distributor Pabrik',
+      phone: document.getElementById('purchaseInvoiceNo')?.value.trim() || '',
+      amount: parseFloat(document.getElementById('purchaseTotalAmount')?.value) || 0,
+      paidAmount: parseFloat(document.getElementById('purchasePaidAmount')?.value) || 0,
+      dueDate: document.getElementById('purchaseDueDate')?.value || '',
+      notes: document.getElementById('purchaseNotes')?.value.trim() || '',
+      items: items
+    };
+
+    try {
+      const saved = await this.store.addTransaction(txData);
+      this.closeModal('modalNewPurchase');
+      this.refreshCurrentView();
+      this.showToast(`Kulakan ${saved.id} berhasil dicatat & stok gudang otomatis bertambah!`);
+    } catch (err) {
+      alert("Gagal menyimpan pembelian: " + err.message);
+    }
+  }
+
+  async handleSaveTransaction() {
+    await this.handleSaveSale();
   }
 
   handleSaveProduct() {
