@@ -279,21 +279,26 @@ class ExportManager {
             <span>METODE BAYAR:</span>
             <span>${methodText}</span>
           </div>
-          ${(tx.paymentMethod === 'cash' && tx.tenderedAmount > 0) ? `
+          ${(tx.paymentMethod === 'cash') ? `
           <div class="d-flex justify-between thermal-sum-row" style="display: flex; justify-content: space-between; margin: 2px 0;">
-            <span>UANG DITERIMA:</span>
-            <span class="font-bold" style="font-weight: 700;">${this.store.formatRupiah(tx.tenderedAmount)}</span>
+            <span>UANG DITERIMA (TUNAI):</span>
+            <span class="font-bold" style="font-weight: 700;">${this.store.formatRupiah(tx.tenderedAmount !== undefined ? tx.tenderedAmount : (tx.paidAmount || tx.amount))}</span>
           </div>
           <div class="d-flex justify-between thermal-sum-row font-bold text-success" style="display: flex; justify-content: space-between; margin: 2px 0; font-weight: 700; color: #16a34a;">
             <span>KEMBALIAN:</span>
-            <span>${this.store.formatRupiah(tx.changeAmount || (tx.tenderedAmount - tx.amount))}</span>
+            <span>${this.store.formatRupiah(tx.changeAmount !== undefined ? tx.changeAmount : Math.max(0, (tx.tenderedAmount || tx.amount) - tx.amount))}</span>
           </div>
           ` : (isPiutang || isHutang) ? `
           <div class="d-flex justify-between thermal-sum-row" style="display: flex; justify-content: space-between; margin: 2px 0;">
             <span>SUDAH DIBAYAR (DP):</span>
             <span class="font-bold" style="font-weight: 700;">${this.store.formatRupiah(tx.paidAmount || 0)}</span>
           </div>
-          ` : ''}
+          ` : `
+          <div class="d-flex justify-between thermal-sum-row" style="display: flex; justify-content: space-between; margin: 2px 0;">
+            <span>JUMLAH DIBAYAR:</span>
+            <span class="font-bold" style="font-weight: 700;">${this.store.formatRupiah(tx.paidAmount || tx.amount)}</span>
+          </div>
+          `}
           ${(isPiutang || isHutang || tx.debtAmount > 0) ? `
           <div class="thermal-divider" style="text-align: center; font-weight: 700; letter-spacing: -1px; overflow: hidden; margin: 4px 0; user-select: none;">--------------------------------</div>
           <div class="d-flex justify-between thermal-sum-row font-bold text-danger" style="display: flex; justify-content: space-between; margin: 2px 0; font-weight: 700; color: #dc2626;">
@@ -476,19 +481,19 @@ class ExportManager {
               <span>Total Nilai Transaksi:</span>
               <span><strong>${this.store.formatRupiah(tx.amount)}</strong></span>
             </div>
-            ${(tx.paymentMethod === 'cash' && tx.tenderedAmount > 0) ? `
+            ${(tx.paymentMethod === 'cash') ? `
             <div class="total-row" style="display: flex; justify-content: space-between; font-size: 0.85rem; padding: 0.25rem 0; color: #0284c7;">
-              <span>Uang Diterima:</span>
-              <span><strong>${this.store.formatRupiah(tx.tenderedAmount)}</strong></span>
+              <span>Uang Diterima (Tunai):</span>
+              <span><strong>${this.store.formatRupiah(tx.tenderedAmount !== undefined ? tx.tenderedAmount : (tx.paidAmount || tx.amount))}</strong></span>
             </div>
             <div class="total-row" style="display: flex; justify-content: space-between; font-size: 0.85rem; padding: 0.25rem 0; color: #16a34a;">
               <span>Kembalian:</span>
-              <span><strong>${this.store.formatRupiah(tx.changeAmount || (tx.tenderedAmount - tx.amount))}</strong></span>
+              <span><strong>${this.store.formatRupiah(tx.changeAmount !== undefined ? tx.changeAmount : Math.max(0, (tx.tenderedAmount || tx.amount) - tx.amount))}</strong></span>
             </div>
             ` : `
             <div class="total-row" style="display: flex; justify-content: space-between; font-size: 0.85rem; padding: 0.25rem 0; color: #16a34a;">
               <span>Jumlah Sudah Dibayar:</span>
-              <span><strong>${this.store.formatRupiah(tx.paidAmount)}</strong></span>
+              <span><strong>${this.store.formatRupiah(tx.paidAmount || tx.amount)}</strong></span>
             </div>
             `}
             <div class="total-row highlight" style="display: flex; justify-content: space-between; font-size: 1.05rem; border-top: 2px solid #0f172a; padding-top: 0.5rem; margin-top: 0.25rem;">

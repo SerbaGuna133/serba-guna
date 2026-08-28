@@ -103,6 +103,9 @@ class TransactionStore {
       totalCOGS = txData.type === 'in' ? (totalAmount * 0.82) : 0;
     }
 
+    const tenderedAmount = Number(txData.tenderedAmount) || paidAmount;
+    const changeAmount = Number(txData.changeAmount) !== undefined ? Number(txData.changeAmount) : Math.max(0, tenderedAmount - totalAmount);
+
     const newTx = {
       id: newId,
       date: dateStr,
@@ -117,6 +120,8 @@ class TransactionStore {
       amount: totalAmount,
       cogs: totalCOGS,
       paidAmount: paidAmount,
+      tenderedAmount: tenderedAmount,
+      changeAmount: changeAmount,
       debtAmount: debtAmount,
       dueDate: txData.dueDate || "",
       status: status,
