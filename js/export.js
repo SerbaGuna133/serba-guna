@@ -209,117 +209,119 @@ class ExportManager {
     else if (isPiutang) methodText = 'BON / TEMPO PROYEK';
     else if (isHutang) methodText = 'TEMPO DISTRIBUTOR';
 
+    const maxWidth = paperWidth === '58mm' ? '270px' : '350px';
+    const fontSize = paperWidth === '58mm' ? '11px' : '12.5px';
+
     return `
-      <div class="thermal-receipt-wrap paper-${paperWidth}">
-        <div class="thermal-header">
-          <div class="thermal-logo">🏗️</div>
-          <h2 class="thermal-title">${profile.name}</h2>
-          <div class="thermal-sub">${profile.tagline || 'Pusat Bahan Bangunan & Konstruksi'}</div>
-          <div class="thermal-address">${profile.address}</div>
-          <div class="thermal-contact">Telp/WA: ${profile.phone}</div>
+      <div class="thermal-receipt-wrap paper-${paperWidth}" style="background: #ffffff !important; color: #000000 !important; font-family: 'JetBrains Mono', 'Courier New', Courier, monospace !important; padding: 18px 14px 25px 14px !important; margin: 0 auto !important; box-shadow: 0 6px 25px rgba(0,0,0,0.35) !important; border-radius: 6px !important; box-sizing: border-box !important; width: 100% !important; max-width: ${maxWidth} !important; font-size: ${fontSize} !important; line-height: 1.35 !important; display: block !important;">
+        <div class="thermal-header" style="text-align: center; margin-bottom: 6px;">
+          <div class="thermal-logo" style="font-size: 24px; margin-bottom: 2px;">🏗️</div>
+          <h2 class="thermal-title" style="font-size: 15px; font-weight: 800; margin: 0; text-transform: uppercase; color: #000000;">${profile.name}</h2>
+          <div class="thermal-sub" style="font-size: 10.5px; font-weight: 600; color: #333333; margin-bottom: 2px;">${profile.tagline || 'Pusat Bahan Bangunan & Konstruksi'}</div>
+          <div class="thermal-address" style="font-size: 9.5px; color: #444444;">${profile.address}</div>
+          <div class="thermal-contact" style="font-size: 9.5px; color: #444444;">Telp/WA: ${profile.phone}</div>
         </div>
 
-        <div class="thermal-divider">================================</div>
+        <div class="thermal-divider" style="text-align: center; font-weight: 700; letter-spacing: -1px; overflow: hidden; margin: 4px 0; user-select: none;">================================</div>
 
-        <div class="thermal-meta">
-          <div class="d-flex justify-between">
+        <div class="thermal-meta" style="font-size: 11px; margin: 4px 0;">
+          <div class="d-flex justify-between" style="display: flex; justify-content: space-between;">
             <span>No. Nota :</span>
-            <span class="font-bold font-mono">${tx.id}</span>
+            <span class="font-bold font-mono" style="font-weight: 700;">${tx.id}</span>
           </div>
-          <div class="d-flex justify-between">
+          <div class="d-flex justify-between" style="display: flex; justify-content: space-between;">
             <span>Tanggal  :</span>
             <span>${dateFormatted} ${timeFormatted}</span>
           </div>
-          <div class="d-flex justify-between">
+          <div class="d-flex justify-between" style="display: flex; justify-content: space-between;">
             <span>Kasir    :</span>
             <span>Kasir Utama</span>
           </div>
-          <div class="d-flex justify-between">
+          <div class="d-flex justify-between" style="display: flex; justify-content: space-between;">
             <span>${tx.type === 'in' ? 'Pelanggan:' : 'Supplier :'}</span>
-            <span class="font-bold">${tx.customer || tx.supplier || 'Pelanggan Umum'}</span>
+            <span class="font-bold" style="font-weight: 700;">${tx.customer || tx.supplier || 'Pelanggan Umum'}</span>
           </div>
           ${tx.phone ? `
-          <div class="d-flex justify-between">
+          <div class="d-flex justify-between" style="display: flex; justify-content: space-between;">
             <span>No. HP   :</span>
             <span>${tx.phone}</span>
           </div>
           ` : ''}
         </div>
 
-        <div class="thermal-divider">--------------------------------</div>
-        <div class="thermal-items-header">
+        <div class="thermal-divider" style="text-align: center; font-weight: 700; letter-spacing: -1px; overflow: hidden; margin: 4px 0; user-select: none;">--------------------------------</div>
+        <div class="thermal-items-header" style="display: flex; justify-content: space-between; font-weight: 800; font-size: 11px;">
           <span>ITEM / BARANG</span>
           <span>TOTAL</span>
         </div>
-        <div class="thermal-divider">--------------------------------</div>
+        <div class="thermal-divider" style="text-align: center; font-weight: 700; letter-spacing: -1px; overflow: hidden; margin: 4px 0; user-select: none;">--------------------------------</div>
 
-        <div class="thermal-items-list">
+        <div class="thermal-items-list" style="margin: 4px 0;">
           ${items.map(it => `
-            <div class="thermal-item-row">
-              <div class="thermal-item-name">${it.name}</div>
-              <div class="thermal-item-details d-flex justify-between">
+            <div class="thermal-item-row" style="margin-bottom: 6px;">
+              <div class="thermal-item-name" style="font-weight: 700; font-size: 11.5px;">${it.name}</div>
+              <div class="thermal-item-details" style="display: flex; justify-content: space-between; font-size: 10.5px; color: #222222;">
                 <span>${it.qty} ${it.unit || 'Pcs'} x ${this.store.formatRupiah(it.price)}</span>
-                <span class="font-bold">${this.store.formatRupiah(it.subtotal || (it.qty * it.price))}</span>
+                <span class="font-bold" style="font-weight: 700;">${this.store.formatRupiah(it.subtotal || (it.qty * it.price))}</span>
               </div>
             </div>
           `).join('')}
         </div>
 
-        <div class="thermal-divider">--------------------------------</div>
+        <div class="thermal-divider" style="text-align: center; font-weight: 700; letter-spacing: -1px; overflow: hidden; margin: 4px 0; user-select: none;">--------------------------------</div>
 
-        <div class="thermal-summary">
-          <div class="d-flex justify-between thermal-sum-row">
+        <div class="thermal-summary" style="font-size: 11.5px; margin: 4px 0;">
+          <div class="d-flex justify-between thermal-sum-row" style="display: flex; justify-content: space-between; margin: 2px 0;">
             <span>TOTAL BELANJA:</span>
-            <span class="thermal-sum-val font-bold">${this.store.formatRupiah(tx.amount)}</span>
+            <span class="thermal-sum-val font-bold" style="font-weight: 700; font-size: 12.5px;">${this.store.formatRupiah(tx.amount)}</span>
           </div>
-          <div class="d-flex justify-between thermal-sum-row">
+          <div class="d-flex justify-between thermal-sum-row" style="display: flex; justify-content: space-between; margin: 2px 0;">
             <span>METODE BAYAR:</span>
             <span>${methodText}</span>
           </div>
-          <div class="d-flex justify-between thermal-sum-row">
+          <div class="d-flex justify-between thermal-sum-row" style="display: flex; justify-content: space-between; margin: 2px 0;">
             <span>SUDAH DIBAYAR (DP):</span>
-            <span class="font-bold">${this.store.formatRupiah(tx.paidAmount || 0)}</span>
+            <span class="font-bold" style="font-weight: 700;">${this.store.formatRupiah(tx.paidAmount || 0)}</span>
           </div>
           ${(isPiutang || isHutang || tx.debtAmount > 0) ? `
-          <div class="thermal-divider">--------------------------------</div>
-          <div class="d-flex justify-between thermal-sum-row font-bold text-danger">
+          <div class="thermal-divider" style="text-align: center; font-weight: 700; letter-spacing: -1px; overflow: hidden; margin: 4px 0; user-select: none;">--------------------------------</div>
+          <div class="d-flex justify-between thermal-sum-row font-bold text-danger" style="display: flex; justify-content: space-between; margin: 2px 0; font-weight: 700; color: #dc2626;">
             <span>SISA TAGIHAN (BON):</span>
             <span>${this.store.formatRupiah(tx.debtAmount)}</span>
           </div>
           ${tx.dueDate ? `
-          <div class="d-flex justify-between thermal-sum-row text-xs">
+          <div class="d-flex justify-between thermal-sum-row text-xs" style="display: flex; justify-content: space-between; font-size: 10px; margin: 2px 0;">
             <span>JATUH TEMPO:</span>
             <span>${this.store.formatDateIndo(tx.dueDate)}</span>
           </div>
           ` : ''}
-          <div class="d-flex justify-between thermal-sum-row" style="margin-top: 4px;">
+          <div class="d-flex justify-between thermal-sum-row" style="display: flex; justify-content: space-between; margin-top: 4px;">
             <span>STATUS:</span>
-            <span class="font-bold ${tx.debtAmount === 0 ? 'text-success' : 'text-danger'}">
+            <span class="font-bold" style="font-weight: 700; color: ${tx.debtAmount === 0 ? '#16a34a' : '#dc2626'};">
               ${tx.debtAmount === 0 ? '*** LUNAS ***' : '*** BELUM LUNAS / BON ***'}
             </span>
           </div>
           ` : `
-          <div class="d-flex justify-between thermal-sum-row" style="margin-top: 4px;">
+          <div class="d-flex justify-between thermal-sum-row" style="display: flex; justify-content: space-between; margin-top: 4px;">
             <span>STATUS:</span>
-            <span class="font-bold text-success">*** LUNAS ***</span>
+            <span class="font-bold" style="font-weight: 700; color: #16a34a;">*** LUNAS ***</span>
           </div>
           `}
         </div>
 
         ${tx.notes ? `
-        <div class="thermal-divider">--------------------------------</div>
-        <div class="thermal-notes">
+        <div class="thermal-divider" style="text-align: center; font-weight: 700; letter-spacing: -1px; overflow: hidden; margin: 4px 0; user-select: none;">--------------------------------</div>
+        <div class="thermal-notes" style="font-size: 10px; background: #f8fafc; padding: 4px 6px; border-radius: 3px; margin: 4px 0; border: 1px dashed #cbd5e1;">
           <strong>Catatan:</strong> ${tx.notes}
         </div>
         ` : ''}
 
-        <div class="thermal-divider">================================</div>
-        <div class="thermal-footer">
+        <div class="thermal-divider" style="text-align: center; font-weight: 700; letter-spacing: -1px; overflow: hidden; margin: 4px 0; user-select: none;">================================</div>
+        <div class="thermal-footer" style="text-align: center; font-size: 10px; margin-top: 8px; line-height: 1.35; color: #333333;">
           <div>Terima kasih atas kunjungan Anda!</div>
-          <div>Barang yang sudah dibeli tidak dapat ditukar/dikembalikan tanpa nota asli.</div>
-          <div class="thermal-app-tag">-- TB. SERBA GUNA POS --</div>
+          <div style="margin-top: 2px;">Barang yang sudah dibeli tidak dapat ditukar/dikembalikan tanpa nota asli.</div>
+          <div class="thermal-app-tag" style="font-size: 9px; margin-top: 6px; letter-spacing: 1px; color: #555555; font-weight: 600;">-- TB. SERBA GUNA POS --</div>
         </div>
-        <div class="thermal-cut-space"></div>
       </div>
     `;
   }
@@ -337,25 +339,25 @@ class ExportManager {
     if (Array.isArray(tx.items) && tx.items.length > 0) {
       itemsRows = tx.items.map((item, idx) => `
         <tr>
-          <td class="text-center">${idx + 1}</td>
-          <td class="font-mono text-xs">${item.id || `ITM-${idx+1}`}</td>
+          <td class="text-center" style="text-align: center;">${idx + 1}</td>
+          <td class="font-mono text-xs" style="font-family: monospace; font-size: 0.75rem;">${item.id || `ITM-${idx+1}`}</td>
           <td><strong>${item.name}</strong></td>
-          <td class="text-center">${item.qty}</td>
-          <td class="text-center">${item.unit || 'Pcs'}</td>
-          <td class="text-right">${this.store.formatRupiah(item.price)}</td>
-          <td class="text-right font-semibold">${this.store.formatRupiah(item.subtotal)}</td>
+          <td class="text-center" style="text-align: center;">${item.qty}</td>
+          <td class="text-center" style="text-align: center;">${item.unit || 'Pcs'}</td>
+          <td class="text-right" style="text-align: right;">${this.store.formatRupiah(item.price)}</td>
+          <td class="text-right font-semibold" style="text-align: right; font-weight: 600;">${this.store.formatRupiah(item.subtotal)}</td>
         </tr>
       `).join('');
     } else {
       itemsRows = `
         <tr>
-          <td class="text-center">1</td>
-          <td class="font-mono text-xs">GEN-001</td>
+          <td class="text-center" style="text-align: center;">1</td>
+          <td class="font-mono text-xs" style="font-family: monospace; font-size: 0.75rem;">GEN-001</td>
           <td><strong>${tx.title}</strong></td>
-          <td class="text-center">1</td>
-          <td class="text-center">Paket</td>
-          <td class="text-right">${this.store.formatRupiah(tx.amount)}</td>
-          <td class="text-right font-semibold">${this.store.formatRupiah(tx.amount)}</td>
+          <td class="text-center" style="text-align: center;">1</td>
+          <td class="text-center" style="text-align: center;">Paket</td>
+          <td class="text-right" style="text-align: right;">${this.store.formatRupiah(tx.amount)}</td>
+          <td class="text-right font-semibold" style="text-align: right; font-weight: 600;">${this.store.formatRupiah(tx.amount)}</td>
         </tr>
       `;
     }
@@ -367,22 +369,22 @@ class ExportManager {
           <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.35rem; color: #475569;">
             Riwayat Pembayaran & Cicilan:
           </div>
-          <table class="report-table" style="font-size: 0.75rem;">
+          <table class="report-table" style="font-size: 0.75rem; width: 100%; border-collapse: collapse; margin-bottom: 1rem;">
             <thead>
-              <tr>
-                <th>Tgl Bayar</th>
-                <th>Keterangan / Bukti</th>
-                <th>Metode</th>
-                <th class="text-right">Nominal Disetor</th>
+              <tr style="background: #f1f5f9;">
+                <th style="border: 1px solid #cbd5e1; padding: 0.4rem 0.6rem; text-align: left;">Tgl Bayar</th>
+                <th style="border: 1px solid #cbd5e1; padding: 0.4rem 0.6rem; text-align: left;">Keterangan / Bukti</th>
+                <th style="border: 1px solid #cbd5e1; padding: 0.4rem 0.6rem; text-align: left;">Metode</th>
+                <th class="text-right" style="border: 1px solid #cbd5e1; padding: 0.4rem 0.6rem; text-align: right;">Nominal Disetor</th>
               </tr>
             </thead>
             <tbody>
               ${tx.payments.map(p => `
                 <tr>
-                  <td>${this.store.formatDateIndo(p.date)}</td>
-                  <td>${p.note || 'Pembayaran Cicilan'}</td>
-                  <td>${p.method === 'transfer' ? 'Transfer Bank' : 'Tunai Kasir'}</td>
-                  <td class="text-right font-semibold text-success">${this.store.formatRupiah(p.amount)}</td>
+                  <td style="border: 1px solid #e2e8f0; padding: 0.4rem 0.6rem;">${this.store.formatDateIndo(p.date)}</td>
+                  <td style="border: 1px solid #e2e8f0; padding: 0.4rem 0.6rem;">${p.note || 'Pembayaran Cicilan'}</td>
+                  <td style="border: 1px solid #e2e8f0; padding: 0.4rem 0.6rem;">${p.method === 'transfer' ? 'Transfer Bank' : 'Tunai Kasir'}</td>
+                  <td class="text-right font-semibold text-success" style="border: 1px solid #e2e8f0; padding: 0.4rem 0.6rem; text-align: right; font-weight: 600; color: #16a34a;">${this.store.formatRupiah(p.amount)}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -392,25 +394,25 @@ class ExportManager {
     }
 
     return `
-      <div class="print-document invoice-view">
+      <div class="print-document invoice-view" style="background: #ffffff !important; color: #0f172a !important; width: 100% !important; max-width: 840px !important; padding: 2.5rem 2.75rem 3.5rem 2.75rem !important; margin: 0 auto !important; border-radius: 8px !important; box-shadow: 0 8px 32px rgba(0,0,0,0.25) !important; box-sizing: border-box !important; display: block !important;">
         <!-- KOP NOTA RESMI -->
-        <div class="official-kop">
-          <div class="kop-logo">🏗️</div>
+        <div class="official-kop" style="display: flex; align-items: center; gap: 1.25rem; margin-bottom: 0.75rem;">
+          <div class="kop-logo" style="font-size: 3rem;">🏗️</div>
           <div class="kop-text">
-            <h1>${profile.name}</h1>
-            <h2>${profile.tagline}</h2>
-            <p>${profile.address} | Telp/WA: <strong>${profile.phone}</strong> | Email: ${profile.email || '-'}</p>
+            <h1 style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.02em;">${profile.name}</h1>
+            <h2 style="font-size: 0.88rem; color: #d97706; font-weight: 700; margin: 0.15rem 0;">${profile.tagline}</h2>
+            <p style="font-size: 0.78rem; color: #64748b; margin: 0;">${profile.address} | Telp/WA: <strong>${profile.phone}</strong> | Email: ${profile.email || '-'}</p>
           </div>
         </div>
-        <div class="kop-line-double"></div>
+        <div class="kop-line-double" style="border-top: 3px double #0f172a; margin: 0.75rem 0 1.25rem 0;"></div>
 
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem;">
           <div>
             <div style="font-size: 1.25rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">
               ${tx.type === 'in' ? (isPiutang ? 'FAKTUR BON PROYEK (PIUTANG)' : 'FAKTUR PENJUALAN MATERIAL') : 'FAKTUR PEMBELIAN / BUKTI KAS KELUAR'}
             </div>
-            <div class="font-mono text-sm" style="margin-top: 0.2rem;">No. Faktur: <strong>${tx.id}</strong></div>
-            <div class="text-sm text-muted">Tanggal: ${this.store.formatDateIndo(tx.date)} ${tx.time || ''}</div>
+            <div class="font-mono text-sm" style="font-family: monospace; font-size: 0.875rem; margin-top: 0.2rem;">No. Faktur: <strong>${tx.id}</strong></div>
+            <div class="text-sm text-muted" style="font-size: 0.875rem; color: #64748b;">Tanggal: ${this.store.formatDateIndo(tx.date)} ${tx.time || ''}</div>
           </div>
           <div style="text-align: right; background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.75rem 1rem; border-radius: 6px; min-width: 220px;">
             <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">
@@ -419,21 +421,21 @@ class ExportManager {
             <div style="font-size: 1rem; font-weight: 800; color: #0f172a; margin: 0.15rem 0;">
               ${tx.customer || tx.supplier || 'Pelanggan Umum'}
             </div>
-            ${tx.phone ? `<div class="text-xs text-muted">Telp/WA: ${tx.phone}</div>` : ''}
+            ${tx.phone ? `<div class="text-xs text-muted" style="font-size: 0.75rem; color: #64748b;">Telp/WA: ${tx.phone}</div>` : ''}
           </div>
         </div>
 
         <!-- TABEL RINCIAN BARANG -->
-        <table class="report-table" style="margin-bottom: 1rem;">
+        <table class="report-table" style="width: 100%; border-collapse: collapse; font-size: 0.78rem; margin-bottom: 1rem;">
           <thead>
-            <tr>
-              <th style="width: 40px;" class="text-center">No</th>
-              <th style="width: 90px;">Kode</th>
-              <th>Nama Barang / Material Konstruksi</th>
-              <th style="width: 60px;" class="text-center">Qty</th>
-              <th style="width: 70px;" class="text-center">Satuan</th>
-              <th style="width: 120px;" class="text-right">Harga Satuan</th>
-              <th style="width: 130px;" class="text-right">Subtotal</th>
+            <tr style="background: #f1f5f9;">
+              <th style="width: 40px; border: 1px solid #cbd5e1; padding: 0.45rem 0.6rem; text-align: center;">No</th>
+              <th style="width: 90px; border: 1px solid #cbd5e1; padding: 0.45rem 0.6rem; text-align: left;">Kode</th>
+              <th style="border: 1px solid #cbd5e1; padding: 0.45rem 0.6rem; text-align: left;">Nama Barang / Material Konstruksi</th>
+              <th style="width: 60px; border: 1px solid #cbd5e1; padding: 0.45rem 0.6rem; text-align: center;">Qty</th>
+              <th style="width: 70px; border: 1px solid #cbd5e1; padding: 0.45rem 0.6rem; text-align: center;">Satuan</th>
+              <th style="width: 120px; border: 1px solid #cbd5e1; padding: 0.45rem 0.6rem; text-align: right;">Harga Satuan</th>
+              <th style="width: 130px; border: 1px solid #cbd5e1; padding: 0.45rem 0.6rem; text-align: right;">Subtotal</th>
             </tr>
           </thead>
           <tbody>
@@ -442,7 +444,7 @@ class ExportManager {
         </table>
 
         <!-- TOTAL & JATUH TEMPO -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; margin-bottom: 1rem;">
           <div>
             ${tx.notes ? `
               <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.6rem 0.85rem; border-radius: 6px; font-size: 0.75rem;">
@@ -459,22 +461,22 @@ class ExportManager {
           </div>
 
           <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.85rem; background: #ffffff;">
-            <div class="total-row" style="font-size: 0.85rem; padding: 0.25rem 0;">
+            <div class="total-row" style="display: flex; justify-content: space-between; font-size: 0.85rem; padding: 0.25rem 0;">
               <span>Total Nilai Transaksi:</span>
               <span><strong>${this.store.formatRupiah(tx.amount)}</strong></span>
             </div>
-            <div class="total-row" style="font-size: 0.85rem; padding: 0.25rem 0; color: #16a34a;">
+            <div class="total-row" style="display: flex; justify-content: space-between; font-size: 0.85rem; padding: 0.25rem 0; color: #16a34a;">
               <span>Jumlah Sudah Dibayar:</span>
               <span><strong>${this.store.formatRupiah(tx.paidAmount)}</strong></span>
             </div>
-            <div class="total-row highlight" style="font-size: 1.05rem; border-top: 2px solid #0f172a; padding-top: 0.5rem; margin-top: 0.25rem;">
+            <div class="total-row highlight" style="display: flex; justify-content: space-between; font-size: 1.05rem; border-top: 2px solid #0f172a; padding-top: 0.5rem; margin-top: 0.25rem;">
               <span>${isPiutang ? 'SISA TAGIHAN (BON):' : isHutang ? 'SISA HUTANG:' : 'SISA:'}</span>
-              <span class="${tx.debtAmount > 0 ? 'text-danger' : 'text-success'} font-bold">
+              <span class="${tx.debtAmount > 0 ? 'text-danger' : 'text-success'}" style="font-weight: 700; color: ${tx.debtAmount > 0 ? '#dc2626' : '#16a34a'};">
                 ${this.store.formatRupiah(tx.debtAmount)}
               </span>
             </div>
             <div style="text-align: right; margin-top: 0.35rem;">
-              <span class="badge ${tx.debtAmount === 0 ? 'badge-success' : 'badge-danger'}" style="font-size: 0.75rem;">
+              <span class="badge ${tx.debtAmount === 0 ? 'badge-success' : 'badge-danger'}" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px; background: ${tx.debtAmount === 0 ? '#dcfce7' : '#fee2e2'}; color: ${tx.debtAmount === 0 ? '#166534' : '#991b1b'};">
                 ${tx.debtAmount === 0 ? 'STATUS: LUNAS' : 'STATUS: TEMPO / BELUM LUNAS'}
               </span>
             </div>
@@ -484,25 +486,25 @@ class ExportManager {
         ${paymentsTable}
 
         <!-- TANDA TANGAN & KETENTUAN -->
-        <div style="margin-top: 2rem;">
-          <p style="font-size: 0.7rem; color: #64748b; font-style: italic; margin-bottom: 1.5rem;">
+        <div style="margin-top: 1.5rem; padding-top: 0.75rem; border-top: 1px solid #f1f5f9;">
+          <p style="font-size: 0.72rem; color: #64748b; font-style: italic; margin: 0 0 1.25rem 0;">
             * Syarat & Ketentuan: ${profile.footerText}
           </p>
-          <div class="signature-grid">
-            <div class="sig-box">
-              <p>Penerima / Pelanggan,</p>
-              <div class="sig-line"></div>
-              <p><strong>(${tx.customer || tx.supplier || '............................'})</strong></p>
+          <div class="signature-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; text-align: center; font-size: 0.75rem;">
+            <div class="sig-box" style="display: flex; flex-direction: column; align-items: center; justify-content: space-between; min-height: 90px;">
+              <p style="margin: 0;">Penerima / Pelanggan,</p>
+              <div class="sig-line" style="height: 50px;"></div>
+              <p style="margin: 0;"><strong>(${tx.customer || tx.supplier || '............................'})</strong></p>
             </div>
-            <div class="sig-box">
-              <p>Sopir / Bagian Pengiriman,</p>
-              <div class="sig-line"></div>
-              <p>( ............................ )</p>
+            <div class="sig-box" style="display: flex; flex-direction: column; align-items: center; justify-content: space-between; min-height: 90px;">
+              <p style="margin: 0;">Sopir / Bagian Pengiriman,</p>
+              <div class="sig-line" style="height: 50px;"></div>
+              <p style="margin: 0;">( ............................ )</p>
             </div>
-            <div class="sig-box">
-              <p>Kasir / Pengelola TB. Serba Guna,</p>
-              <div class="sig-line"></div>
-              <p><strong>(${profile.owner.split('/')[0].trim()})</strong></p>
+            <div class="sig-box" style="display: flex; flex-direction: column; align-items: center; justify-content: space-between; min-height: 90px;">
+              <p style="margin: 0;">Kasir / Pengelola TB. Serba Guna,</p>
+              <div class="sig-line" style="height: 50px;"></div>
+              <p style="margin: 0;"><strong>(${profile.owner.split('/')[0].trim()})</strong></p>
             </div>
           </div>
         </div>
