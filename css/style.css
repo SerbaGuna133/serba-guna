@@ -1435,48 +1435,86 @@ button, input, select, textarea {
 
 /* ==================== PRINT MEDIA OVERRIDES ==================== */
 @media print {
-  body {
+  html, body {
     background: #ffffff !important;
     color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
   }
+
+  /* Sembunyikan seluruh halaman aplikasi */
   .app-header,
+  .main-wrapper,
+  .view-section,
   .hero-card,
   .app-nav-tabs,
   .table-filter-bar,
   .header-actions,
   .btn,
-  .modal-footer,
   .modal-header,
-  .toast-container {
+  .modal-footer,
+  .toast-container,
+  .modal-backdrop:not(.active) {
     display: none !important;
   }
-  .main-wrapper {
-    padding: 0 !important;
-    max-width: 100% !important;
-  }
-  .modal-backdrop {
+
+  /* Tampilkan hanya modal yang sedang aktif */
+  .modal-backdrop.active {
     position: static !important;
     background: none !important;
     display: block !important;
     padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
   }
-  .modal-content {
+
+  .modal-backdrop.active .modal-content {
     border: none !important;
     box-shadow: none !important;
     max-width: 100% !important;
     max-height: none !important;
     padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
   }
-  .modal-body {
+
+  .modal-backdrop.active .modal-body {
     background: #ffffff !important;
     padding: 0 !important;
+    margin: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
-  body.printing-thermal .thermal-receipt-wrap {
+
+  /* Styling Struk Thermal saat Cetak */
+  .thermal-receipt-wrap {
     box-shadow: none !important;
     border-radius: 0 !important;
-    padding: 4px 2px !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  body.printing-thermal .thermal-receipt-wrap {
     width: 100% !important;
     max-width: 100% !important;
+    padding: 2px !important;
+  }
+
+  /* Styling Dokumen Faktur / Laporan A4 saat Cetak */
+  .print-document {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    background: #ffffff !important;
+    color: #000000 !important;
   }
 }
 
