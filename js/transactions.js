@@ -131,11 +131,19 @@ class TransactionStore {
       createdAt: new Date().toISOString()
     };
 
-    if (window.inventoryStore && items.length > 0) {
-      if (newTx.type === 'in') {
+    if (window.inventoryStore) {
+      if (newTx.type === 'in' && items.length > 0) {
         window.inventoryStore.deductStockFromSale(items, newId);
-      } else if (newTx.type === 'out' && ['semen', 'besi', 'pasir', 'kayu', 'cat', 'pipa', 'keramik', 'atap', 'hardware', 'listrik'].includes(newTx.category)) {
-        window.inventoryStore.addStockFromPurchase(items, newId);
+      } else if (newTx.type === 'out' && ['semen', 'besi', 'pasir', 'kayu', 'cat', 'pipa', 'keramik', 'atap', 'hardware', 'listrik', 'lainnya'].includes(newTx.category)) {
+        const purchaseItems = items.length > 0 ? items : [{
+          id: '',
+          name: newTx.title,
+          category: newTx.category,
+          qty: 1,
+          unit: 'Paket',
+          price: totalAmount
+        }];
+        window.inventoryStore.addStockFromPurchase(purchaseItems, newId);
       }
     }
 

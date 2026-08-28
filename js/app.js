@@ -1566,8 +1566,7 @@ class AppController {
     }
 
     this.closeModal('modalNewProduct');
-    this.renderInventoryView();
-    this.updateNavBadges();
+    this.refreshCurrentView();
   }
 
   handleSaveCOA() {
