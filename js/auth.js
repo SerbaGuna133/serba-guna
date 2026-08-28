@@ -92,16 +92,55 @@ class AuthManager {
     }
   }
 
-  login(username, password, rememberMe = true) {
+  async login(username, password, rememberMe = true) {
     if (!username || !password) {
-      throw new Error("Username dan Password wajib diisi.");
+      throw new Error("Username/Email dan Password wajib diisi.");
     }
 
-    const cleanUser = username.trim().toLowerCase();
-    const user = this.users.find(u => u.username.toLowerCase() === cleanUser);
+    const cleanInput = username.trim().toLowerCase();
+    const isEmailFormat = cleanInput.includes('@');
+    const emailToUse = isEmailFormat ? cleanInput : `${cleanInput}@serbaguna.com`;
+
+    // 1. Coba Autentikasi Cloud Firebase jika SDK tersedia
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+      try {
+        const userCredential = await firebase.auth().signInWithEmailAndPassword(emailToUse, password.trim());
+        const fbUser = userCredential.user;
+
+        const role = (cleanInput === 'admin' || emailToUse.startsWith('admin') || emailToUse.startsWith('owner')) ? 'owner' : 'kasir';
+        const name = role === 'owner' ? 'Hazel Hudaya (Owner)' : (fbUser.displayName || 'Kasir Toko');
+
+        this.currentUser = {
+          id: fbUser.uid,
+          username: cleanInput,
+          email: fbUser.email,
+          name: name,
+          role: role,
+          isFirebase: true
+        };
+
+        const sessionPayload = JSON.stringify(this.currentUser);
+        if (rememberMe) {
+          localStorage.setItem(STORAGE_KEYS_AUTH.SESSION, sessionPayload);
+          localStorage.setItem(STORAGE_KEYS_AUTH.REMEMBER, 'true');
+        } else {
+          sessionStorage.setItem(STORAGE_KEYS_AUTH.SESSION, sessionPayload);
+          localStorage.removeItem(STORAGE_KEYS_AUTH.SESSION);
+          localStorage.removeItem(STORAGE_KEYS_AUTH.REMEMBER);
+        }
+
+        return this.currentUser;
+      } catch (fbErr) {
+        console.warn("Firebase auth info:", fbErr.code, fbErr.message);
+        // Jika error bukan karena offline, tapi akun ada di local, lanjut ke verifikasi lokal
+      }
+    }
+
+    // 2. Fallback Verifikasi Kredensial Lokal (Offline / Default Users)
+    const user = this.users.find(u => u.username.toLowerCase() === cleanInput || (u.email && u.email.toLowerCase() === cleanInput));
 
     if (!user) {
-      throw new Error("Username tidak ditemukan di sistem.");
+      throw new Error("Akun tidak ditemukan. Masukkan username 'admin' atau 'kasir'.");
     }
 
     if (user.password !== password.trim()) {
@@ -113,7 +152,8 @@ class AuthManager {
       username: user.username,
       name: user.name,
       role: user.role,
-      phone: user.phone
+      phone: user.phone,
+      isFirebase: false
     };
 
     const sessionPayload = JSON.stringify(this.currentUser);
@@ -129,7 +169,15 @@ class AuthManager {
     return this.currentUser;
   }
 
-  logout() {
+  async logout() {
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+      try {
+        await firebase.auth().signOut();
+      } catch (e) {
+        console.warn("Firebase signOut error:", e);
+      }
+    }
+
     this.currentUser = null;
     localStorage.removeItem(STORAGE_KEYS_AUTH.SESSION);
     sessionStorage.removeItem(STORAGE_KEYS_AUTH.SESSION);
@@ -145,20 +193,30 @@ class AuthManager {
     return this.currentUser;
   }
 
-  changePassword(username, oldPassword, newPassword) {
+  async changePassword(username, oldPassword, newPassword) {
+    // Jika user Firebase sedang login
+    if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
+      try {
+        await firebase.auth().currentUser.updatePassword(newPassword.trim());
+      } catch (e) {
+        console.warn("Gagal update password di Firebase:", e.message);
+      }
+    }
+
     const user = this.users.find(u => u.username.toLowerCase() === username.trim().toLowerCase());
-    if (!user) throw new Error("Pengguna tidak ditemukan.");
+    if (user) {
+      if (user.password !== oldPassword.trim()) {
+        throw new Error("Password lama Anda tidak sesuai.");
+      }
 
-    if (user.password !== oldPassword.trim()) {
-      throw new Error("Password lama Anda tidak sesuai.");
+      if (!newPassword || newPassword.trim().length < 4) {
+        throw new Error("Password baru minimal harus 4 karakter.");
+      }
+
+      user.password = newPassword.trim();
+      this.saveUsers();
     }
 
-    if (!newPassword || newPassword.trim().length < 4) {
-      throw new Error("Password baru minimal harus 4 karakter.");
-    }
-
-    user.password = newPassword.trim();
-    this.saveUsers();
     return true;
   }
 

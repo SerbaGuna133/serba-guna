@@ -77,12 +77,13 @@ class AppController {
     if (nameEl) nameEl.textContent = user.name;
   }
 
-  handleLogin(e) {
+  async handleLogin(e) {
     if (e) e.preventDefault();
     const alertBox = document.getElementById('loginAlert');
     const userInp = document.getElementById('loginUsername');
     const passInp = document.getElementById('loginPassword');
     const remInp = document.getElementById('loginRememberMe');
+    const submitBtn = document.getElementById('btnLoginSubmit');
 
     const username = userInp ? userInp.value.trim() : '';
     const password = passInp ? passInp.value.trim() : '';
@@ -90,7 +91,12 @@ class AppController {
 
     try {
       if (alertBox) alertBox.style.display = 'none';
-      const user = this.auth.login(username, password, rememberMe);
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '⏳ Memverifikasi...';
+      }
+
+      const user = await this.auth.login(username, password, rememberMe);
 
       const loginScreen = document.getElementById('loginScreen');
       const appContainer = document.getElementById('appContainer');
@@ -107,12 +113,17 @@ class AppController {
       } else {
         alert(err.message);
       }
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '🚀 Masuk ke Aplikasi';
+      }
     }
   }
 
-  handleLogout() {
+  async handleLogout() {
     if (confirm("Apakah Anda yakin ingin keluar dan mengunci aplikasi TB. Serba Guna?")) {
-      this.auth.logout();
+      await this.auth.logout();
       const loginScreen = document.getElementById('loginScreen');
       const appContainer = document.getElementById('appContainer');
       if (loginScreen) loginScreen.style.display = 'flex';
@@ -147,7 +158,7 @@ class AppController {
     }
   }
 
-  handleChangePassword(e) {
+  async handleChangePassword(e) {
     if (e) e.preventDefault();
     const userSelect = document.getElementById('pwdUserSelect')?.value;
     const oldPass = document.getElementById('pwdOld')?.value;
@@ -160,7 +171,7 @@ class AppController {
     }
 
     try {
-      this.auth.changePassword(userSelect, oldPass, newPass);
+      await this.auth.changePassword(userSelect, oldPass, newPass);
       document.getElementById('formChangePassword')?.reset();
       this.showToast(`Password untuk akun ${userSelect} berhasil diperbarui!`);
     } catch (err) {
