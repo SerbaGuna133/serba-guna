@@ -2227,76 +2227,65 @@ class AppController {
   // ==================== SCAN BARCODE VIA KAMERA HP ====================
   async openCameraScannerModal() {
     this.openModal('modalCameraScanner');
-    const video = document.getElementById('cameraScannerVideo');
     const status = document.getElementById('cameraScannerStatus');
-    
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      if (status) status.textContent = "❌ Kamera tidak didukung di browser ini. Silakan gunakan scanner barcode USB atau ketik kode angka.";
-      return;
-    }
+    const inp = document.getElementById('cameraManualCodeInput');
+    if (inp) inp.value = '';
 
-    try {
-      if (status) status.textContent = "Menghubungkan ke kamera HP...";
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: this.cameraFacingMode || 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-      });
-      this.cameraStream = stream;
-      if (video) {
-        video.srcObject = stream;
-        video.play();
+    if (status) status.textContent = "Menghubungkan kamera HP...";
+
+    // Use Html5Qrcode if available (Supports 100% Android & iPhone browsers)
+    if (window.Html5Qrcode) {
+      try {
+        if (!this.html5QrCode) {
+          this.html5QrCode = new Html5Qrcode("html5QrcodeReader");
+        }
+
+        const facing = this.cameraFacingMode || "environment";
+        const config = {
+          fps: 15,
+          qrbox: { width: 250, height: 140 },
+          aspectRatio: 1.0,
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true
+          }
+        };
+
+        await this.html5QrCode.start(
+          { facingMode: facing },
+          config,
+          (decodedText) => {
+            if (decodedText) {
+              this.closeCameraScannerModal();
+              this.handleBarcodeScanInPOS(decodedText);
+            }
+          },
+          () => {}
+        );
+        if (status) status.textContent = "✅ Kamera aktif. Arahkan barcode ke kotak hijau di atas.";
+      } catch (err) {
+        console.warn("Gagal start Html5Qrcode:", err);
+        if (status) status.textContent = `⚠️ Kamera belum aktif: ${err.message || 'Izin kamera ditolak'}. Pastikan klik Izinkan / Allow saat browser meminta akses kamera.`;
       }
-      if (status) status.textContent = "Arahkan garis kamera ke barcode barang...";
-      this.startCameraBarcodeScanning();
-    } catch (err) {
-      console.warn("Gagal membuka kamera:", err);
-      if (status) status.textContent = `❌ Akses kamera ditolak/gagal: ${err.message}. Pastikan izin kamera telah diizinkan di browser.`;
+    } else {
+      if (status) status.textContent = "Sedang memuat engine scanner kamera HP...";
     }
   }
 
-  closeCameraScannerModal() {
-    if (this.cameraStream) {
-      this.cameraStream.getTracks().forEach(track => track.stop());
-      this.cameraStream = null;
-    }
-    if (this.cameraScanTimer) {
-      cancelAnimationFrame(this.cameraScanTimer);
-      this.cameraScanTimer = null;
+  async closeCameraScannerModal() {
+    if (this.html5QrCode && this.html5QrCode.isScanning) {
+      try {
+        await this.html5QrCode.stop();
+      } catch (e) {
+        console.warn("Gagal stop Html5Qrcode:", e);
+      }
     }
     this.closeModal('modalCameraScanner');
   }
 
-  switchCameraFacing() {
+  async switchCameraFacing() {
     this.cameraFacingMode = this.cameraFacingMode === 'user' ? 'environment' : 'user';
-    this.closeCameraScannerModal();
+    await this.closeCameraScannerModal();
     setTimeout(() => this.openCameraScannerModal(), 300);
-  }
-
-  startCameraBarcodeScanning() {
-    if ('BarcodeDetector' in window) {
-      const barcodeDetector = new BarcodeDetector({
-        formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'qr_code', 'upc_a', 'upc_e']
-      });
-      const video = document.getElementById('cameraScannerVideo');
-      const scanLoop = async () => {
-        if (!this.cameraStream || !video || video.readyState < 2) {
-          this.cameraScanTimer = requestAnimationFrame(scanLoop);
-          return;
-        }
-        try {
-          const barcodes = await barcodeDetector.detect(video);
-          if (barcodes && barcodes.length > 0) {
-            const raw = barcodes[0].rawValue;
-            if (raw) {
-              this.closeCameraScannerModal();
-              this.handleBarcodeScanInPOS(raw);
-              return;
-            }
-          }
-        } catch (e) {}
-        this.cameraScanTimer = requestAnimationFrame(scanLoop);
-      };
-      this.cameraScanTimer = requestAnimationFrame(scanLoop);
-    }
   }
 
   applyCameraManualCode() {
