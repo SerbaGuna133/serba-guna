@@ -1196,8 +1196,17 @@ class AppController {
     const customerInput = document.getElementById('saleCustomerName');
     if (customerInput) customerInput.value = 'Pelanggan Umum';
 
+    const pctInput = document.getElementById('saleDiscountPercent');
+    if (pctInput) pctInput.value = '';
+
     const discInput = document.getElementById('saleDiscountAmount');
     if (discInput) discInput.value = '';
+
+    const hintEl = document.getElementById('saleDiscountSummaryHint');
+    if (hintEl) {
+      hintEl.textContent = 'Ketik persen (misal: 25%) atau nominal rupiah';
+      hintEl.className = 'text-xs text-muted';
+    }
 
     const subtotalInput = document.getElementById('saleSubtotalAmount');
     if (subtotalInput) subtotalInput.value = 0;
@@ -1406,11 +1415,75 @@ class AppController {
     const elSubtotal = document.getElementById('saleSubtotalAmount');
     if (elSubtotal) elSubtotal.value = subtotal;
 
-    const discount = parseFloat(document.getElementById('saleDiscountAmount')?.value) || 0;
-    const total = Math.max(0, subtotal - discount);
+    const pctInput = document.getElementById('saleDiscountPercent');
+    const pct = parseFloat(pctInput?.value) || 0;
+    const amountInput = document.getElementById('saleDiscountAmount');
+    let discount = 0;
 
+    if (pct > 0) {
+      discount = Math.round((subtotal * pct) / 100);
+      if (amountInput) amountInput.value = discount > 0 ? discount : '';
+      const hintEl = document.getElementById('saleDiscountSummaryHint');
+      if (hintEl) {
+        hintEl.textContent = `💡 Potongan ${pct}% = Hemat ${this.store.formatRupiah(discount)}`;
+        hintEl.className = 'text-xs font-semibold text-danger';
+      }
+    } else {
+      discount = parseFloat(amountInput?.value) || 0;
+    }
+
+    const total = Math.max(0, subtotal - discount);
     const elTotal = document.getElementById('saleTotalAmount');
     if (elTotal) elTotal.value = total;
+
+    this.handleSaleAmountChange();
+  }
+
+  handleSaleDiscountPercentChange() {
+    const subtotal = parseFloat(document.getElementById('saleSubtotalAmount')?.value) || 0;
+    const pct = parseFloat(document.getElementById('saleDiscountPercent')?.value) || 0;
+    const hintEl = document.getElementById('saleDiscountSummaryHint');
+    const amountInput = document.getElementById('saleDiscountAmount');
+
+    if (pct > 0 && subtotal > 0) {
+      const discountVal = Math.round((subtotal * pct) / 100);
+      if (amountInput) amountInput.value = discountVal;
+      if (hintEl) {
+        hintEl.textContent = `💡 Potongan ${pct}% = Hemat ${this.store.formatRupiah(discountVal)}`;
+        hintEl.className = 'text-xs font-semibold text-danger';
+      }
+    } else if (pct === 0) {
+      if (amountInput) amountInput.value = '';
+      if (hintEl) {
+        hintEl.textContent = 'Ketik persen (misal: 25%) atau nominal rupiah';
+        hintEl.className = 'text-xs text-muted';
+      }
+    }
+
+    this.handleSaleAmountChange();
+  }
+
+  handleSaleDiscountAmountChange() {
+    const subtotal = parseFloat(document.getElementById('saleSubtotalAmount')?.value) || 0;
+    const discountVal = parseFloat(document.getElementById('saleDiscountAmount')?.value) || 0;
+    const hintEl = document.getElementById('saleDiscountSummaryHint');
+    const pctInput = document.getElementById('saleDiscountPercent');
+
+    if (discountVal > 0 && subtotal > 0) {
+      const pct = (discountVal / subtotal) * 100;
+      const formattedPct = pct % 1 === 0 ? pct : Number(pct.toFixed(1));
+      if (pctInput) pctInput.value = formattedPct;
+      if (hintEl) {
+        hintEl.textContent = `💡 Potongan ${formattedPct}% = Hemat ${this.store.formatRupiah(discountVal)}`;
+        hintEl.className = 'text-xs font-semibold text-danger';
+      }
+    } else if (discountVal === 0) {
+      if (pctInput) pctInput.value = '';
+      if (hintEl) {
+        hintEl.textContent = 'Ketik persen (misal: 25%) atau nominal rupiah';
+        hintEl.className = 'text-xs text-muted';
+      }
+    }
 
     this.handleSaleAmountChange();
   }
@@ -2115,7 +2188,8 @@ class AppController {
     // Sales Form Events
     document.getElementById('btnAddSaleItemRow')?.addEventListener('click', () => this.addSaleItemRow());
     document.getElementById('salePaymentMethod')?.addEventListener('change', () => this.handleSalePaymentMethodChange());
-    document.getElementById('saleDiscountAmount')?.addEventListener('input', () => this.handleSaleAmountChange());
+    document.getElementById('saleDiscountPercent')?.addEventListener('input', () => this.handleSaleDiscountPercentChange());
+    document.getElementById('saleDiscountAmount')?.addEventListener('input', () => this.handleSaleDiscountAmountChange());
     document.getElementById('saleTotalAmount')?.addEventListener('input', () => this.handleSaleAmountChange());
     document.getElementById('saleTenderedAmount')?.addEventListener('input', () => this.handleSaleAmountChange());
     document.getElementById('saleDebtDP')?.addEventListener('input', () => this.handleSaleAmountChange());
@@ -2290,6 +2364,7 @@ class AppController {
     const change = (tendered >= totalAmount && method === 'cash') ? (tendered - totalAmount) : 0;
 
     const subtotalAmount = parseFloat(document.getElementById('saleSubtotalAmount')?.value) || totalAmount;
+    const discountPercent = parseFloat(document.getElementById('saleDiscountPercent')?.value) || 0;
     const discountAmount = parseFloat(document.getElementById('saleDiscountAmount')?.value) || 0;
 
     const txData = {
@@ -2304,6 +2379,7 @@ class AppController {
       amount: totalAmount,
       subtotal: subtotalAmount,
       discount: discountAmount,
+      discountPercent: discountPercent,
       paidAmount: paidAmount,
       tenderedAmount: tendered,
       changeAmount: change,

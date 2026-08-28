@@ -120,6 +120,7 @@ class TransactionStore {
       amount: totalAmount,
       subtotal: Number(txData.subtotal) || totalAmount,
       discount: Number(txData.discount) || 0,
+      discountPercent: Number(txData.discountPercent) || 0,
       cogs: totalCOGS,
       paidAmount: paidAmount,
       tenderedAmount: tenderedAmount,

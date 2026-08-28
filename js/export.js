@@ -277,7 +277,7 @@ class ExportManager {
             <span>${this.store.formatRupiah(tx.subtotal || (tx.amount + tx.discount))}</span>
           </div>
           <div class="d-flex justify-between thermal-sum-row font-bold" style="display: flex; justify-content: space-between; margin: 2px 0; color: #dc2626;">
-            <span>DISKON / POTONGAN:</span>
+            <span>DISKON / POTONGAN ${tx.discountPercent > 0 ? `(${tx.discountPercent}%)` : ''}:</span>
             <span>-${this.store.formatRupiah(tx.discount)}</span>
           </div>
           ` : ''}
@@ -493,7 +493,7 @@ class ExportManager {
               <span>${this.store.formatRupiah(tx.subtotal || (tx.amount + tx.discount))}</span>
             </div>
             <div class="total-row" style="display: flex; justify-content: space-between; font-size: 0.85rem; padding: 0.25rem 0; color: #dc2626;">
-              <span>Diskon / Potongan Harga:</span>
+              <span>Diskon / Potongan Harga ${tx.discountPercent > 0 ? `(${tx.discountPercent}%)` : ''}:</span>
               <span><strong>-${this.store.formatRupiah(tx.discount)}</strong></span>
             </div>
             ` : ''}

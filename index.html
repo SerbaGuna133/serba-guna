@@ -1065,9 +1065,17 @@
               <input type="number" id="saleSubtotalAmount" class="form-control font-bold" min="0" step="100" placeholder="0" readonly style="background: var(--bg-subtle);" />
             </div>
 
+            <!-- Diskon Persen & Rupiah Dual Input -->
             <div class="form-group">
-              <label class="form-label font-bold text-danger">🎟️ Diskon / Potongan Harga (Rp):</label>
-              <input type="number" id="saleDiscountAmount" class="form-control font-bold text-danger" min="0" step="100" placeholder="Contoh: 50000" />
+              <label class="form-label font-bold text-danger">🎟️ Diskon / Potongan (% dan Rp):</label>
+              <div class="d-flex align-center gap-2">
+                <div style="position: relative; width: 100px; flex-shrink: 0;">
+                  <input type="number" id="saleDiscountPercent" class="form-control font-bold text-danger" min="0" max="100" step="any" placeholder="0" style="padding-right: 1.5rem;" />
+                  <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-weight: 800; color: #dc2626;">%</span>
+                </div>
+                <input type="number" id="saleDiscountAmount" class="form-control font-bold text-danger" min="0" step="100" placeholder="Potongan (Rp)" />
+              </div>
+              <small class="text-xs text-muted" id="saleDiscountSummaryHint">Ketik persen (misal: 25%) atau nominal rupiah</small>
             </div>
 
             <div class="form-group">
