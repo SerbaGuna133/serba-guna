@@ -261,6 +261,43 @@ class AccountingEngine {
     return newJournal;
   }
 
+  updateManualJournal(journalId, journalData) {
+    const idx = this.manualJournals.findIndex(j => j.id === journalId);
+    if (idx === -1) throw new Error("Jurnal manual tidak ditemukan.");
+
+    let totDebit = 0;
+    let totCredit = 0;
+    journalData.lines.forEach(line => {
+      totDebit += (Number(line.debit) || 0);
+      totCredit += (Number(line.credit) || 0);
+    });
+
+    if (Math.abs(totDebit - totCredit) > 1) {
+      throw new Error(`Ayat Jurnal Tidak Seimbang! Total Debit (${totDebit}) harus sama dengan Total Kredit (${totCredit})`);
+    }
+
+    const updated = {
+      ...this.manualJournals[idx],
+      date: journalData.date || this.manualJournals[idx].date,
+      voucherNo: journalData.voucherNo || this.manualJournals[idx].voucherNo,
+      desc: journalData.desc || this.manualJournals[idx].desc,
+      lines: journalData.lines,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.manualJournals[idx] = updated;
+    this.saveManualJournals();
+    return updated;
+  }
+
+  deleteManualJournal(journalId) {
+    const idx = this.manualJournals.findIndex(j => j.id === journalId);
+    if (idx === -1) return false;
+    this.manualJournals.splice(idx, 1);
+    this.saveManualJournals();
+    return true;
+  }
+
   generateJournalsFromInventory() {
     const journals = [];
     if (!window.inventoryStore || !Array.isArray(window.inventoryStore.products)) {

@@ -605,6 +605,26 @@ class AppController {
         const isFirstLine = idx === 0;
         const isIndent = cre > 0;
 
+        let actionCellHTML = '';
+        if (isFirstLine) {
+          if (!j.isAuto) {
+            actionCellHTML = `
+              <td class="text-center" rowspan="${j.lines.length}" style="vertical-align: middle; border-left: 1px solid var(--border-color);">
+                <div class="table-actions justify-center">
+                  <button class="btn-icon-only btn-sm" onclick="window.app.openEditManualJournalModal('${j.id}')" title="Edit Jurnal">✏️</button>
+                  <button class="btn-icon-only btn-sm text-danger" onclick="window.app.deleteManualJournal('${j.id}')" title="Hapus Jurnal">🗑️</button>
+                </div>
+              </td>
+            `;
+          } else {
+            actionCellHTML = `
+              <td class="text-center text-muted text-xs" rowspan="${j.lines.length}" style="vertical-align: middle; border-left: 1px solid var(--border-color);">
+                <span class="badge badge-gray text-xs" title="Otomatis dari Transaksi / Stok (Diedit di menu Buku Kas / Stok)">Otomatis</span>
+              </td>
+            `;
+          }
+        }
+
         rowsHTML += `
           <tr style="${isFirstLine ? 'border-top: 1px solid var(--border-color);' : ''}">
             <td class="text-muted text-xs">${isFirstLine ? this.store.formatDateIndo(j.date) : ''}</td>
@@ -620,6 +640,7 @@ class AppController {
             <td class="text-right font-mono font-semibold ${cre > 0 ? 'text-danger' : 'text-muted'}">
               ${cre > 0 ? this.store.formatRupiah(cre) : '-'}
             </td>
+            ${actionCellHTML}
           </tr>
         `;
       });
@@ -632,9 +653,10 @@ class AppController {
         <td colspan="4" class="text-right">TOTAL JURNAL (DEBIT & KREDIT):</td>
         <td class="text-right font-mono font-bold text-success">${this.store.formatRupiah(totDebit)}</td>
         <td class="text-right font-mono font-bold text-danger">${this.store.formatRupiah(totCredit)}</td>
+        <td></td>
       </tr>
       <tr>
-        <td colspan="6" class="text-center" style="padding: 0.5rem;">
+        <td colspan="7" class="text-center" style="padding: 0.5rem;">
           <span class="badge ${isBalanced ? 'badge-success' : 'badge-danger'}">
             ${isBalanced ? '✅ JURNAL UMUM SEIMBANG (DEBIT = KREDIT)' : '⚠️ PERHATIAN: TOTAL DEBIT & KREDIT TIDAK SEIMBANG'}
           </span>
@@ -1200,8 +1222,12 @@ class AppController {
 
   // 4. Modal Jurnal Penyesuaian Manual
   openManualJournalModal() {
+    this.editingJournalId = null;
     const form = document.getElementById('formManualJournal');
     if (form) form.reset();
+
+    const titleEl = document.querySelector('#modalManualJournal .modal-title');
+    if (titleEl) titleEl.textContent = '📖 Input Jurnal Penyesuaian Manual (Double-Entry)';
 
     document.getElementById('modalJrnDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('modalJrnVoucher').value = `JV-${new Date().getFullYear()}${String(new Date().getMonth()+1).padStart(2,'0')}-${Math.floor(100+Math.random()*900)}`;
@@ -1215,6 +1241,42 @@ class AppController {
 
     this.recalculateJournalModal();
     this.openModal('modalManualJournal');
+  }
+
+  openEditManualJournalModal(journalId) {
+    const journal = this.accounting.manualJournals.find(j => j.id === journalId);
+    if (!journal) {
+      this.showToast("Data jurnal manual tidak ditemukan.", "danger");
+      return;
+    }
+
+    this.editingJournalId = journalId;
+    const titleEl = document.querySelector('#modalManualJournal .modal-title');
+    if (titleEl) titleEl.textContent = `✏️ Edit Jurnal Penyesuaian: ${journal.voucherNo}`;
+
+    document.getElementById('modalJrnDate').value = journal.date;
+    document.getElementById('modalJrnVoucher').value = journal.voucherNo;
+    document.getElementById('modalJrnDesc').value = journal.desc || '';
+
+    const container = document.getElementById('journalLinesContainer');
+    if (container) {
+      container.innerHTML = '';
+      journal.lines.forEach(l => {
+        this.addJournalLineRow(l.accountCode, l.debit, l.credit, l.desc || '');
+      });
+    }
+
+    this.recalculateJournalModal();
+    this.openModal('modalManualJournal');
+  }
+
+  deleteManualJournal(journalId) {
+    if (confirm("Apakah Anda yakin ingin menghapus ayat jurnal penyesuaian ini? Data buku besar dan neraca akan otomatis menyesuaikan.")) {
+      if (this.accounting.deleteManualJournal(journalId)) {
+        this.refreshCurrentView();
+        this.showToast("Ayat jurnal manual berhasil dihapus!", "warning");
+      }
+    }
   }
 
   addJournalLineRow(accountCode = '', debit = 0, credit = 0, desc = '') {
@@ -1610,10 +1672,15 @@ class AppController {
     };
 
     try {
-      this.accounting.addManualJournal(journalData);
+      if (this.editingJournalId) {
+        this.accounting.updateManualJournal(this.editingJournalId, journalData);
+        this.showToast("Jurnal penyesuaian berhasil diperbarui!");
+      } else {
+        this.accounting.addManualJournal(journalData);
+        this.showToast("Jurnal penyesuaian manual berhasil dicatat!");
+      }
       this.closeModal('modalManualJournal');
       this.refreshCurrentView();
-      this.showToast("Jurnal penyesuaian manual berhasil dicatat!");
     } catch (e) {
       alert(e.message);
     }
