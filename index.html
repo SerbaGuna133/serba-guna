@@ -451,6 +451,9 @@
           </label>
         </div>
         <div class="filter-right">
+          <button class="btn btn-outline btn-sm" onclick="window.app && window.app.openBarcodeModal()">
+            <span>🏷️</span> Cetak Label Barcode
+          </button>
           <button class="btn btn-success btn-sm" onclick="window.app && window.app.openNewPurchaseModal()">
             <span>📥</span> Kulakan / Tambah Stok Masuk
           </button>
@@ -1400,6 +1403,49 @@
           <button type="submit" class="btn btn-primary">💾 Simpan Data Barang</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- 2B. MODAL LIHAT & CETAK LABEL BARCODE BARANG -->
+  <div class="modal-backdrop" id="modalBarcodeLabel">
+    <div class="modal-content" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3 class="modal-title">🏷️ Label & Barcode Barang</h3>
+        <button class="btn-icon-only" onclick="window.app.closeModal('modalBarcodeLabel')">✕</button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Dropdown Pilih Barang -->
+        <div class="form-group mb-3">
+          <label class="form-label font-bold">Pilih Barang Material:</label>
+          <select id="barcodeProductSelect" class="form-control font-bold" onchange="window.app.renderBarcodePreview()"></select>
+        </div>
+
+        <!-- Preview Stiker Label Barcode -->
+        <div class="barcode-preview-card" id="barcodePreviewBox" style="background: #ffffff; color: #0f172a; padding: 1.25rem; border-radius: 8px; border: 2px dashed #cbd5e1; text-align: center; margin-bottom: 1.25rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <!-- Opsi Cetak Stiker -->
+        <div class="form-grid" style="background: var(--bg-subtle); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label font-bold">Jumlah Stiker yang Dicetak:</label>
+            <select id="barcodePrintCount" class="form-control">
+              <option value="1">1 Stiker (Ukuran Standar Rak/Barang)</option>
+              <option value="5">5 Stiker</option>
+              <option value="10">10 Stiker (Lembar Mini)</option>
+              <option value="24" selected>24 Stiker (1 Lembar Kertas Label A4 Penuh)</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="window.app.closeModal('modalBarcodeLabel')">Tutup</button>
+        <button type="button" class="btn btn-primary" onclick="window.app.printBarcodeLabels()">
+          <span>🖨️</span> Cetak Stiker Barcode
+        </button>
+      </div>
     </div>
   </div>
 

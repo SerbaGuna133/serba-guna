@@ -579,8 +579,11 @@ class AppController {
 
       return `
         <tr>
-          <td>
-            <div class="font-mono text-xs font-bold" style="color: var(--primary);">🔢 ${p.code || p.id}</div>
+          <td style="cursor: pointer;" onclick="window.app.openBarcodeModal('${p.id}')" title="Klik untuk lihat / cetak label barcode">
+            <div class="font-mono text-xs font-bold" style="color: var(--primary); display: flex; align-items: center; gap: 4px;">
+              <span>🔢 ${p.code || p.id}</span>
+              <span style="font-size: 9px; background: rgba(2, 132, 199, 0.12); color: #0284c7; padding: 1px 4px; border-radius: 4px; font-weight: 700;">🏷️</span>
+            </div>
             ${p.barcode && p.barcode !== (p.code || p.id) ? `<div class="text-xs text-muted font-mono">||| ${p.barcode}</div>` : ''}
           </td>
           <td>
@@ -612,6 +615,7 @@ class AppController {
           <td><small class="text-muted">${p.location || '-'}</small></td>
           <td class="text-center">
             <div class="table-actions justify-between">
+              <button class="btn-icon-only btn-sm" onclick="window.app.openBarcodeModal('${p.id}')" title="Lihat & Cetak Label Barcode" style="color: #0284c7;">🏷️</button>
               <button class="btn-icon-only btn-sm" onclick="window.app.openEditProductModal('${p.id}')" title="Edit Barang">✏️</button>
               <button class="btn-icon-only btn-sm" onclick="window.app.openStockOpnameModal('${p.id}')" title="Stock Opname (Koreksi)">⚙️</button>
               <button class="btn-icon-only btn-sm text-danger" onclick="window.app.deleteProduct('${p.id}')" title="Hapus Barang">🗑️</button>
@@ -2053,6 +2057,169 @@ class AppController {
       this.renderInventoryView();
       this.showToast(`Stok ${p.name} disesuaikan menjadi ${newQty} ${p.unit}`);
     }
+  }
+
+  openBarcodeModal(productId = null) {
+    const select = document.getElementById('barcodeProductSelect');
+    if (select && this.inventory) {
+      const prods = this.inventory.products;
+      if (prods.length === 0) {
+        alert("Belum ada data barang. Silakan tambahkan barang terlebih dahulu!");
+        return;
+      }
+      select.innerHTML = prods.map(p => `
+        <option value="${p.id}" ${p.id === productId ? 'selected' : ''}>[${p.code || p.id}] ${p.name} - ${this.store.formatRupiah(p.sellPrice)}</option>
+      `).join('');
+    }
+    this.renderBarcodePreview();
+    this.openModal('modalBarcodeLabel');
+  }
+
+  renderBarcodePreview() {
+    const selId = document.getElementById('barcodeProductSelect')?.value;
+    const box = document.getElementById('barcodePreviewBox');
+    if (!box || !this.inventory) return;
+
+    const prod = this.inventory.products.find(p => p.id === selId) || this.inventory.products[0];
+    if (!prod) {
+      box.innerHTML = '<p class="text-muted">Barang tidak ditemukan.</p>';
+      return;
+    }
+
+    const storeName = this.store.storeProfile?.name || 'TB. SERBA GUNA';
+    const code = prod.code || prod.id;
+    const barcodeSVG = this.generateBarcodeSVG(code, { height: 48, barWidth: 2 });
+
+    box.innerHTML = `
+      <div style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px;">${storeName}</div>
+      <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin: 0.25rem 0 0.5rem 0;">${prod.name}</div>
+      <div style="background: #ffffff; padding: 0.5rem; border-radius: 4px; display: inline-block; margin: 0 auto;">
+        ${barcodeSVG}
+      </div>
+      <div style="margin-top: 0.5rem; font-size: 1.25rem; font-weight: 800; color: #16a34a;">
+        ${this.store.formatRupiah(prod.sellPrice)} <span style="font-size: 0.8rem; color: #64748b; font-weight: 600;">/ ${prod.unit}</span>
+      </div>
+    `;
+  }
+
+  printBarcodeLabels() {
+    const selId = document.getElementById('barcodeProductSelect')?.value;
+    const count = parseInt(document.getElementById('barcodePrintCount')?.value, 10) || 1;
+    const prod = this.inventory?.products.find(p => p.id === selId);
+    if (!prod) return;
+
+    const storeName = this.store.storeProfile?.name || 'TB. SERBA GUNA';
+    const code = prod.code || prod.id;
+    const barcodeSVG = this.generateBarcodeSVG(code, { height: 38, barWidth: 1.8 });
+
+    const singleStickerHTML = `
+      <div style="border: 1px dashed #94a3b8; padding: 8px 12px; border-radius: 6px; text-align: center; background: #ffffff; width: 165px; box-sizing: border-box; page-break-inside: avoid; margin: 4px; display: inline-block;">
+        <div style="font-size: 9px; font-weight: 800; text-transform: uppercase; color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${storeName}</div>
+        <div style="font-size: 11px; font-weight: 800; color: #0f172a; margin: 2px 0 4px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${prod.name}</div>
+        <div>${barcodeSVG}</div>
+        <div style="font-size: 11.5px; font-weight: 800; color: #0f172a; margin-top: 3px;">${this.store.formatRupiah(prod.sellPrice)} <span style="font-size: 9px; font-weight: 600;">/${prod.unit}</span></div>
+      </div>
+    `;
+
+    let allStickers = '';
+    for (let i = 0; i < count; i++) {
+      allStickers += singleStickerHTML;
+    }
+
+    const printWin = window.open('', '_blank', 'width=800,height=600');
+    if (!printWin) {
+      alert("Gagal membuka jendela cetak. Pastikan pop-up diizinkan di browser Anda.");
+      return;
+    }
+
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Cetak Label Barcode - ${prod.name}</title>
+        <style>
+          @page { size: auto; margin: 8mm; }
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 10px; background: #ffffff; }
+          .labels-grid { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-start; }
+          @media print {
+            body { padding: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="labels-grid">
+          ${allStickers}
+        </div>
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 300);
+          };
+        <\/script>
+      </body>
+      </html>
+    `);
+    printWin.document.close();
+  }
+
+  generateBarcodeSVG(text, options = {}) {
+    const code = String(text || '').trim();
+    if (!code) return '';
+    const height = options.height || 48;
+    const barWidth = options.barWidth || 2;
+    const showText = options.showText !== false;
+    
+    // Standard Code 128B patterns
+    const C128_PATTERNS = [
+      "212222","222122","222221","121223","121322","131222","122213","122312","132212","221213",
+      "221312","231212","112232","122132","122231","113222","123122","123221","223211","221132",
+      "221231","213212","223112","312131","311222","321122","321221","312212","322112","322211",
+      "212123","212321","232121","111323","131123","131321","112313","132113","132311","211313",
+      "231113","231311","112133","112331","132131","113123","113321","133121","313121","211331",
+      "231131","213113","213311","213131","311123","311321","331121","312113","312311","332111",
+      "314111","221411","431111","111224","111422","121124","121421","141122","141221","112214",
+      "112412","122114","122411","142112","142211","241211","221114","413111","241112","134111",
+      "111242","121142","121241","114212","124112","124211","411212","421112","421211","212141",
+      "214121","412121","111143","111341","131141","114113","114311","411113","411311","113141",
+      "114131","311141","411131","211412","211214","211232","2331112"
+    ];
+    
+    let checkSum = 104;
+    let patternSequence = [C128_PATTERNS[104]];
+    
+    for (let i = 0; i < code.length; i++) {
+      const charCode = code.charCodeAt(i);
+      const val = charCode >= 32 && charCode <= 126 ? charCode - 32 : 0;
+      patternSequence.push(C128_PATTERNS[val]);
+      checkSum += val * (i + 1);
+    }
+    
+    const checkDigit = checkSum % 103;
+    patternSequence.push(C128_PATTERNS[checkDigit]);
+    patternSequence.push(C128_PATTERNS[106]);
+    
+    const fullPattern = patternSequence.join('');
+    let x = 10;
+    let rects = '';
+    
+    for (let i = 0; i < fullPattern.length; i++) {
+      const width = parseInt(fullPattern[i], 10) * barWidth;
+      if (i % 2 === 0) {
+        rects += `<rect x="${x}" y="0" width="${width}" height="${height}" fill="#000000" />`;
+      }
+      x += width;
+    }
+    
+    const totalWidth = x + 10;
+    const svgHeight = showText ? height + 18 : height;
+    
+    return `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalWidth} ${svgHeight}" width="${totalWidth}" height="${svgHeight}" style="display: block; margin: 0 auto; max-width: 100%;">
+        ${rects}
+        ${showText ? `<text x="${totalWidth / 2}" y="${height + 14}" text-anchor="middle" font-family="monospace, Courier, sans-serif" font-size="12" font-weight="700" fill="#000000" letter-spacing="2">${code}</text>` : ''}
+      </svg>
+    `;
   }
 
   deleteProduct(productId) {
