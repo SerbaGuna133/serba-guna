@@ -2224,6 +2224,81 @@ class AppController {
     `;
   }
 
+  // ==================== SCAN BARCODE VIA KAMERA HP ====================
+  async openCameraScannerModal() {
+    this.openModal('modalCameraScanner');
+    const video = document.getElementById('cameraScannerVideo');
+    const status = document.getElementById('cameraScannerStatus');
+    
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      if (status) status.textContent = "❌ Kamera tidak didukung di browser ini. Silakan gunakan scanner barcode USB atau ketik kode angka.";
+      return;
+    }
+
+    try {
+      if (status) status.textContent = "Menghubungkan ke kamera HP...";
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: this.cameraFacingMode || 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      });
+      this.cameraStream = stream;
+      if (video) {
+        video.srcObject = stream;
+        video.play();
+      }
+      if (status) status.textContent = "Arahkan garis kamera ke barcode barang...";
+      this.startCameraBarcodeScanning();
+    } catch (err) {
+      console.warn("Gagal membuka kamera:", err);
+      if (status) status.textContent = `❌ Akses kamera ditolak/gagal: ${err.message}. Pastikan izin kamera telah diizinkan di browser.`;
+    }
+  }
+
+  closeCameraScannerModal() {
+    if (this.cameraStream) {
+      this.cameraStream.getTracks().forEach(track => track.stop());
+      this.cameraStream = null;
+    }
+    if (this.cameraScanTimer) {
+      cancelAnimationFrame(this.cameraScanTimer);
+      this.cameraScanTimer = null;
+    }
+    this.closeModal('modalCameraScanner');
+  }
+
+  switchCameraFacing() {
+    this.cameraFacingMode = this.cameraFacingMode === 'user' ? 'environment' : 'user';
+    this.closeCameraScannerModal();
+    setTimeout(() => this.openCameraScannerModal(), 300);
+  }
+
+  startCameraBarcodeScanning() {
+    if ('BarcodeDetector' in window) {
+      const barcodeDetector = new BarcodeDetector({
+        formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'qr_code', 'upc_a', 'upc_e']
+      });
+      const video = document.getElementById('cameraScannerVideo');
+      const scanLoop = async () => {
+        if (!this.cameraStream || !video || video.readyState < 2) {
+          this.cameraScanTimer = requestAnimationFrame(scanLoop);
+          return;
+        }
+        try {
+          const barcodes = await barcodeDetector.detect(video);
+          if (barcodes && barcodes.length > 0) {
+            const raw = barcodes[0].rawValue;
+            if (raw) {
+              this.closeCameraScannerModal();
+              this.handleBarcodeScanInPOS(raw);
+              return;
+            }
+          }
+        } catch (e) {}
+        this.cameraScanTimer = requestAnimationFrame(scanLoop);
+      };
+      this.cameraScanTimer = requestAnimationFrame(scanLoop);
+    }
+  }
+
   deleteProduct(productId) {
     if (confirm("Apakah Anda yakin ingin menghapus barang ini dari master inventori?")) {
       this.inventory.deleteProduct(productId);
