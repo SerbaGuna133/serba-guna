@@ -151,35 +151,46 @@ class AccountingEngine {
     const autoJournals = [];
 
     transactions.forEach(tx => {
-      const date = tx.date;
+      const date = tx.date || new Date().toISOString().split('T')[0];
       const voucher = tx.id;
-      const desc = tx.title + (tx.customer ? ` (${tx.customer})` : tx.supplier ? ` (${tx.supplier})` : '');
+      const desc = tx.title || (tx.type === 'in' ? 'Penjualan Material' : 'Pembelian / Kulakan Material');
       const amount = Number(tx.amount) || 0;
       const paid = Number(tx.paidAmount) || 0;
-      const debt = Number(tx.debtAmount) || 0;
+      const debt = Number(tx.debtAmount) !== undefined ? Number(tx.debtAmount) : Math.max(0, amount - paid);
       const cogs = Number(tx.cogs) || 0;
+
+      if (amount <= 0) return;
 
       if (tx.type === 'in') {
         const lines = [];
 
+        // 1. Kas / Bank / Piutang Masuk (Sisi Debit)
         if (tx.paymentMethod === 'cash') {
           lines.push({ accountCode: '1101', debit: amount, credit: 0, desc: 'Penerimaan Kasir Tunai' });
         } else if (tx.paymentMethod === 'transfer') {
-          lines.push({ accountCode: '1102', debit: amount, credit: 0, desc: 'Penerimaan Transfer Bank' });
+          lines.push({ accountCode: '1102', debit: amount, credit: 0, desc: 'Penerimaan Transfer Bank BCA / QRIS' });
         } else if (tx.paymentMethod === 'piutang') {
           if (paid > 0) {
-            lines.push({ accountCode: '1101', debit: paid, credit: 0, desc: 'Penerimaan DP Bon' });
+            lines.push({ accountCode: '1101', debit: paid, credit: 0, desc: 'Penerimaan Uang Muka (DP) Bon' });
           }
           if (debt > 0) {
-            lines.push({ accountCode: '1103', debit: debt, credit: 0, desc: 'Piutang Bon Proyek' });
+            lines.push({ accountCode: '1103', debit: debt, credit: 0, desc: 'Piutang Bon Usaha Pelanggan' });
           }
+          if (paid === 0 && debt === 0 && amount > 0) {
+            lines.push({ accountCode: '1103', debit: amount, credit: 0, desc: 'Piutang Bon Usaha Pelanggan' });
+          }
+        } else {
+          lines.push({ accountCode: '1101', debit: amount, credit: 0, desc: 'Penerimaan Kasir' });
         }
 
+        // 2. Pendapatan Penjualan (Sisi Kredit)
         const revenueCode = tx.category === 'ongkir' ? '4201' : '4101';
-        lines.push({ accountCode: revenueCode, debit: 0, credit: amount, desc: 'Pendapatan Penjualan' });
+        const revDesc = tx.category === 'ongkir' ? 'Pendapatan Ongkir Truk' : 'Pendapatan Penjualan Material';
+        lines.push({ accountCode: revenueCode, debit: 0, credit: amount, desc: revDesc });
 
+        // 3. Beban Pokok Penjualan (HPP) & Pengurangan Stok Persediaan
         if (cogs > 0 && tx.category !== 'ongkir') {
-          lines.push({ accountCode: '5101', debit: cogs, credit: 0, desc: 'Beban Pokok Penjualan (HPP)' });
+          lines.push({ accountCode: '5101', debit: cogs, credit: 0, desc: 'Harga Pokok Penjualan (HPP)' });
           lines.push({ accountCode: '1104', debit: 0, credit: cogs, desc: 'Pengurangan Stok Persediaan' });
         }
 
@@ -187,33 +198,47 @@ class AccountingEngine {
 
       } else if (tx.type === 'out') {
         const lines = [];
-        let expenseAcc = '6199';
-        if (['semen', 'besi', 'pasir', 'kayu', 'cat', 'pipa', 'keramik', 'atap', 'hardware', 'listrik'].includes(tx.category)) {
-          expenseAcc = '1104';
-        } else if (tx.category === 'operasional') {
-          expenseAcc = '6101';
+
+        // 1. Penambahan Persediaan Material / Beban Operasional (Sisi Debit)
+        let debitAcc = '1104';
+        let debitDesc = 'Persediaan Barang Dagang (Stok Material Masuk)';
+
+        if (tx.category === 'operasional') {
+          debitAcc = '6101';
+          debitDesc = 'Beban Gaji Karyawan & Upah Bongkar';
         } else if (tx.category === 'armada') {
-          expenseAcc = '6102';
+          debitAcc = '6102';
+          debitDesc = 'Beban BBM Solar & Perawatan Truk';
+        } else if (tx.category === 'beban_lain') {
+          debitAcc = '6199';
+          debitDesc = 'Beban Operasional Lainnya';
         }
 
-        lines.push({ accountCode: expenseAcc, debit: amount, credit: 0, desc: 'Belanja / Beban Operasional' });
+        lines.push({ accountCode: debitAcc, debit: amount, credit: 0, desc: debitDesc });
 
+        // 2. Kas / Bank / Hutang Keluar (Sisi Kredit)
         if (tx.paymentMethod === 'cash') {
           lines.push({ accountCode: '1101', debit: 0, credit: amount, desc: 'Pengeluaran Kas Toko' });
         } else if (tx.paymentMethod === 'transfer') {
-          lines.push({ accountCode: '1102', debit: 0, credit: amount, desc: 'Pengeluaran Bank BCA' });
+          lines.push({ accountCode: '1102', debit: 0, credit: amount, desc: 'Pengeluaran Rekening Bank BCA' });
         } else if (tx.paymentMethod === 'hutang') {
           if (paid > 0) {
-            lines.push({ accountCode: '1101', debit: 0, credit: paid, desc: 'Pembayaran DP Tempo' });
+            lines.push({ accountCode: '1101', debit: 0, credit: paid, desc: 'Pembayaran DP ke Distributor' });
           }
           if (debt > 0) {
-            lines.push({ accountCode: '2101', debit: 0, credit: debt, desc: 'Hutang Usaha Supplier' });
+            lines.push({ accountCode: '2101', debit: 0, credit: debt, desc: 'Hutang Usaha ke Distributor' });
           }
+          if (paid === 0 && debt === 0 && amount > 0) {
+            lines.push({ accountCode: '2101', debit: 0, credit: amount, desc: 'Hutang Usaha ke Distributor' });
+          }
+        } else {
+          lines.push({ accountCode: '1101', debit: 0, credit: amount, desc: 'Pengeluaran Kas Toko' });
         }
 
         autoJournals.push({ id: `JRN-${tx.id}`, date, voucherNo: voucher, desc, lines, isAuto: true });
       }
 
+      // 4. Pembayaran Cicilan / Pelunasan Lanjutan
       if (Array.isArray(tx.payments)) {
         tx.payments.forEach((p, pIdx) => {
           if (pIdx === 0 && (tx.paymentMethod === 'cash' || tx.paymentMethod === 'transfer')) return;
@@ -231,14 +256,14 @@ class AccountingEngine {
             payLines.push({ accountCode: '1103', debit: 0, credit: pAmount, desc: 'Pengurangan Piutang Bon' });
           } else {
             payLines.push({ accountCode: '2101', debit: pAmount, credit: 0, desc: 'Pelunasan Hutang Distributor' });
-            payLines.push({ accountCode: cashAcc, debit: 0, credit: pAmount, desc: `Pembayaran Cicilan: ${p.note || tx.title}` });
+            payLines.push({ accountCode: cashAcc, debit: 0, credit: pAmount, desc: `Pembayaran Hutang: ${p.note || tx.title}` });
           }
 
           autoJournals.push({
             id: `JRN-PAY-${tx.id}-${pIdx}`,
             date: payDate,
-            voucherNo: p.receiptNo || `PAY-${tx.id}`,
-            desc: `Pembayaran Cicilan: ${tx.title} (${tx.customer || tx.supplier || ''})`,
+            voucherNo: p.receiptNo || `PAY-${tx.id}-${pIdx}`,
+            desc: `Pelunasan Cicilan: ${tx.title} (${tx.customer || tx.supplier || ''})`,
             lines: payLines,
             isAuto: true
           });
@@ -320,6 +345,9 @@ class AccountingEngine {
       return journals;
     }
 
+    const hasPurchases = window.transactionStore && window.transactionStore.transactions.some(t => t.type === 'out');
+    if (hasPurchases) return journals;
+
     window.inventoryStore.products.forEach(p => {
       const stock = Number(p.stock) || 0;
       const buyPrice = Number(p.buyPrice) || 0;
@@ -331,19 +359,19 @@ class AccountingEngine {
           id: `JRN-STK-${p.id}`,
           date: dateStr,
           voucherNo: `STK-${p.id}`,
-          desc: `Stok Masuk / Modal Persediaan: ${p.name} (${stock} ${p.unit} @ Rp ${buyPrice.toLocaleString('id-ID')})`,
+          desc: `Saldo Awal Persediaan Material: ${p.name} (${stock} ${p.unit})`,
           lines: [
             {
               accountCode: '1104',
               debit: totalAsset,
               credit: 0,
-              desc: `Penambahan Nilai Stok Material: ${p.name}`
+              desc: `Saldo Awal Stok Material: ${p.name}`
             },
             {
               accountCode: '3101',
               debit: 0,
               credit: totalAsset,
-              desc: `Modal Persediaan Stok Pemilik Toko`
+              desc: `Modal Awal Pemilik Toko`
             }
           ],
           isAuto: true

@@ -15,7 +15,7 @@ class AppController {
     this.auth = window.authManager;
 
     this.currentTab = 'dashboard';
-    this.selectedPeriod = '2026-08';
+    this.selectedPeriod = '';
     this.editingTxId = null;
     this.editingProdId = null;
 
