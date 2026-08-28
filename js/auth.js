@@ -15,7 +15,7 @@ const DEFAULT_USERS = [
     username: 'admin',
     email: '133serbaguna@gmail.com',
     password: 'admin123',
-    name: 'Hazel Hudaya (Owner)',
+    name: 'Owner / Admin',
     role: 'owner',
     phone: '0813-5925-4159',
     createdAt: '2026-08-01'
@@ -48,13 +48,16 @@ class AuthManager {
       if (!Array.isArray(parsed) || parsed.length === 0) {
         parsed = [...DEFAULT_USERS];
       } else {
-        // Sinkronkan email dan username default jika belum terdaftar
+        // Sinkronkan email, nama, dan username default jika belum terdaftar
         DEFAULT_USERS.forEach(defUser => {
           const idx = parsed.findIndex(u => u.username === defUser.username || u.id === defUser.id);
           if (idx === -1) {
             parsed.push(defUser);
           } else {
             if (!parsed[idx].email) parsed[idx].email = defUser.email;
+            if (parsed[idx].name === 'Hazel Hudaya (Owner)' || parsed[idx].name === 'Hazel Hudaya') {
+              parsed[idx].name = defUser.name;
+            }
           }
         });
       }
@@ -86,12 +89,13 @@ class AuthManager {
 
       if (sessionData) {
         const userObj = JSON.parse(sessionData);
-        const exists = this.users.find(u => u.username.toLowerCase() === userObj.username.toLowerCase());
+        const exists = this.users.find(u => u.username.toLowerCase() === userObj.username.toLowerCase() || (u.email && u.email.toLowerCase() === (userObj.email || '').toLowerCase()));
         if (exists) {
+          const cleanName = (exists.name === 'Hazel Hudaya (Owner)' || exists.name === 'Hazel Hudaya') ? 'Owner / Admin' : exists.name;
           this.currentUser = {
             id: exists.id,
             username: exists.username,
-            name: exists.name,
+            name: cleanName,
             role: exists.role,
             phone: exists.phone
           };
@@ -104,6 +108,26 @@ class AuthManager {
     } catch (e) {
       this.currentUser = null;
     }
+  }
+
+  updateProfile(username, newName) {
+    const cleanUser = username.trim().toLowerCase();
+    const user = this.users.find(u => u.username.toLowerCase() === cleanUser || (u.email && u.email.toLowerCase() === cleanUser));
+    if (user && newName && newName.trim()) {
+      user.name = newName.trim();
+      this.saveUsers();
+      if (this.currentUser && (this.currentUser.username.toLowerCase() === cleanUser || this.currentUser.id === user.id)) {
+        this.currentUser.name = user.name;
+        const sessionPayload = JSON.stringify(this.currentUser);
+        if (localStorage.getItem(STORAGE_KEYS_AUTH.REMEMBER)) {
+          localStorage.setItem(STORAGE_KEYS_AUTH.SESSION, sessionPayload);
+        } else {
+          sessionStorage.setItem(STORAGE_KEYS_AUTH.SESSION, sessionPayload);
+        }
+      }
+      return user;
+    }
+    return null;
   }
 
   ensureFirebaseInitialized() {

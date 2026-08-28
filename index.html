@@ -149,7 +149,7 @@
           <!-- Active User Badge -->
           <div class="user-session-badge" id="userSessionBadge" title="Pengguna yang sedang aktif">
             <span class="user-avatar" id="headerUserAvatar">👑</span>
-            <span class="user-name" id="headerUserName">Hazel Hudaya</span>
+            <span class="user-name" id="headerUserName">Owner / Admin</span>
           </div>
 
           <!-- Cloud Status Pill -->
@@ -957,37 +957,37 @@
 
           <!-- Keamanan Akun & Sandi -->
           <div>
-            <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.5rem;">🔐 Keamanan & Ubah Password / PIN Akun</h4>
+            <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.5rem;">🔐 Profil Pengguna & Ganti Password / PIN</h4>
             <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-              Perbarui kata sandi akun Admin / Owner atau Kasir Toko untuk keamanan data pembukuan.
+              Perbarui nama tampilan pengguna toko dan kata sandi akun Admin / Owner atau Kasir Toko.
             </p>
             <form id="formChangePassword" style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
               <div class="form-grid">
                 <div class="form-group">
                   <label class="form-label">Pilih Akun:</label>
                   <select id="pwdUserSelect" class="form-control">
-                    <option value="admin">👑 Hazel Hudaya (Owner / Admin)</option>
-                    <option value="kasir">💼 Kasir Toko Utama</option>
+                    <option value="admin">👑 Akun Owner / Admin</option>
+                    <option value="kasir">💼 Akun Kasir Toko</option>
                   </select>
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Password Lama:</label>
-                  <input type="password" id="pwdOld" class="form-control" placeholder="Ketik password saat ini..." required />
+                  <label class="form-label">Nama Tampilan / Panggilan:</label>
+                  <input type="text" id="pwdDisplayName" class="form-control" placeholder="Contoh: Owner Toko, Pak Budi, dll..." />
                 </div>
               </div>
               <div class="form-grid mt-2">
                 <div class="form-group">
-                  <label class="form-label">Password Baru:</label>
-                  <input type="password" id="pwdNew" class="form-control" placeholder="Minimal 4 karakter..." required minlength="4" />
+                  <label class="form-label">Password Lama:</label>
+                  <input type="password" id="pwdOld" class="form-control" placeholder="Ketik password saat ini (kosongkan jika hanya ganti nama)..." />
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Konfirmasi Password Baru:</label>
-                  <input type="password" id="pwdConfirm" class="form-control" placeholder="Ulangi password baru..." required minlength="4" />
+                  <label class="form-label">Password Baru:</label>
+                  <input type="password" id="pwdNew" class="form-control" placeholder="Minimal 4 karakter (kosongkan jika tidak ubah password)..." minlength="4" />
                 </div>
               </div>
               <div class="mt-3 text-right">
                 <button type="submit" class="btn btn-primary btn-sm">
-                  🔒 Perbarui Password
+                  💾 Simpan Perubahan Profil & Password
                 </button>
               </div>
             </form>

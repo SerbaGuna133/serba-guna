@@ -161,19 +161,36 @@ class AppController {
   async handleChangePassword(e) {
     if (e) e.preventDefault();
     const userSelect = document.getElementById('pwdUserSelect')?.value;
+    const newName = document.getElementById('pwdDisplayName')?.value;
     const oldPass = document.getElementById('pwdOld')?.value;
     const newPass = document.getElementById('pwdNew')?.value;
-    const confirmPass = document.getElementById('pwdConfirm')?.value;
-
-    if (newPass !== confirmPass) {
-      alert("Konfirmasi password baru tidak cocok. Harap periksa kembali.");
-      return;
-    }
 
     try {
-      await this.auth.changePassword(userSelect, oldPass, newPass);
-      document.getElementById('formChangePassword')?.reset();
-      this.showToast(`Password untuk akun ${userSelect} berhasil diperbarui!`);
+      let updatedItems = [];
+
+      // 1. Update nama jika diisi
+      if (newName && newName.trim()) {
+        this.auth.updateProfile(userSelect, newName.trim());
+        this.updateUserSessionHeader();
+        updatedItems.push("nama tampilan");
+      }
+
+      // 2. Update password jika diisi
+      if (newPass && newPass.trim()) {
+        if (!oldPass || !oldPass.trim()) {
+          alert("Silakan masukkan password lama Anda untuk mengubah kata sandi baru.");
+          return;
+        }
+        await this.auth.changePassword(userSelect, oldPass, newPass);
+        updatedItems.push("kata sandi");
+      }
+
+      if (updatedItems.length > 0) {
+        document.getElementById('formChangePassword')?.reset();
+        this.showToast(`Berhasil memperbarui ${updatedItems.join(' dan ')} akun ${userSelect}!`);
+      } else {
+        this.showToast("Silakan isi nama baru atau password baru yang ingin diubah.", "warning");
+      }
     } catch (err) {
       alert(err.message);
     }
