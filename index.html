@@ -112,6 +112,27 @@
 
           <!-- Right Header Actions & Quick POS Buttons -->
           <div class="header-actions">
+            <!-- Filter Periode Global -->
+            <select id="globalPeriodSelect" class="header-period-select" title="Filter Periode Waktu Pembukuan">
+              <option value="">Semua Periode</option>
+              <option value="2026-08" selected>Bulan Ini (Agustus 2026)</option>
+              <option value="2026-07">Juli 2026</option>
+              <option value="2026-06">Juni 2026</option>
+              <option value="2026">Tahun 2026</option>
+            </select>
+
+            <!-- Cetak Laporan Cepat -->
+            <button class="btn btn-outline btn-sm" id="btnQuickPrintReport" title="Buka Dokumen Cetak Laporan">
+              <span>🖨️</span> Cetak
+            </button>
+
+            <!-- Ekspor Excel -->
+            <button class="btn btn-outline btn-sm" id="btnQuickExportExcel" title="Ekspor Data ke Excel (.xlsx)">
+              <span>📊</span> Ekspor
+            </button>
+
+            <div class="header-divider"></div>
+
             <!-- Quick Action Buttons -->
             <button class="btn btn-success btn-header-pos" id="btnOpenNewSaleModal" onclick="window.app && window.app.openNewSaleModal()" title="Buka Kasir Penjualan Material (Kas Masuk)">
               <span>🛒</span> Penjualan Kasir
@@ -148,9 +169,9 @@
         </div>
       </div>
 
-      <!-- Bottom Row: Clean Full-Width Navigation Tabs & Top Tools -->
+      <!-- Bottom Row: Clean Full-Width Navigation Tabs -->
       <div class="header-nav-bar">
-        <div class="header-container header-nav-container">
+        <div class="header-container">
           <nav class="app-nav-tabs" id="mainNavTabs">
             <button class="nav-tab-btn active" data-tab="dashboard" id="tabBtnDashboard">
               <span>📊</span> Dashboard
@@ -186,28 +207,6 @@
               <span>⚙️</span> Pengaturan
             </button>
           </nav>
-
-          <!-- Top Tools: Filter Periode Global, Cetak & Ekspor -->
-          <div class="header-tools">
-            <!-- Filter Periode Global -->
-            <select id="globalPeriodSelect" class="header-period-select" title="Filter Periode Waktu Pembukuan">
-              <option value="">Semua Periode</option>
-              <option value="2026-08" selected>Bulan Ini (Agustus 2026)</option>
-              <option value="2026-07">Juli 2026</option>
-              <option value="2026-06">Juni 2026</option>
-              <option value="2026">Tahun 2026</option>
-            </select>
-
-            <!-- Cetak Laporan Cepat -->
-            <button class="btn btn-outline btn-sm" id="btnQuickPrintReport" title="Buka Dokumen Cetak Laporan">
-              <span>🖨️</span> Cetak
-            </button>
-
-            <!-- Ekspor Excel -->
-            <button class="btn btn-outline btn-sm" id="btnQuickExportExcel" title="Ekspor Data ke Excel (.xlsx)">
-              <span>📊</span> Ekspor
-            </button>
-          </div>
         </div>
       </div>
     </header>
