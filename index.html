@@ -1062,7 +1062,7 @@
           <div class="form-grid mt-3" style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
             <div class="form-group">
               <label class="form-label">Subtotal Belanja (Sebelum Diskon):</label>
-              <input type="number" id="saleSubtotalAmount" class="form-control font-bold" min="0" step="100" placeholder="0" readonly style="background: var(--bg-subtle);" />
+              <input type="text" id="saleSubtotalAmount" class="form-control font-bold" value="Rp 0" readonly style="background: var(--bg-subtle); font-size: 1.1rem; color: var(--text-main);" />
             </div>
 
             <!-- Diskon Persen & Rupiah Dual Input -->
@@ -1073,30 +1073,30 @@
                   <input type="number" id="saleDiscountPercent" class="form-control font-bold text-danger" min="0" max="100" step="any" placeholder="0" style="padding-right: 1.5rem;" />
                   <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-weight: 800; color: #dc2626;">%</span>
                 </div>
-                <input type="number" id="saleDiscountAmount" class="form-control font-bold text-danger" min="0" step="100" placeholder="Potongan (Rp)" />
+                <input type="text" id="saleDiscountAmount" class="form-control font-bold text-danger" placeholder="Rp 0" />
               </div>
               <small class="text-xs text-muted" id="saleDiscountSummaryHint">Ketik persen (misal: 25%) atau nominal rupiah</small>
             </div>
 
             <div class="form-group">
               <label class="form-label font-bold text-success">Total Tagihan Bersih (Rp):</label>
-              <input type="number" id="saleTotalAmount" class="form-control font-bold text-success" min="0" step="100" placeholder="0" required />
+              <input type="text" id="saleTotalAmount" class="form-control font-bold text-success" value="Rp 0" readonly style="background: var(--bg-subtle); font-size: 1.25rem; font-weight: 800;" required />
             </div>
 
             <!-- Bagian Pembayaran Tunai: Uang Diterima & Kembalian -->
             <div class="form-group" id="groupSaleCashTendered">
               <label class="form-label font-bold text-primary">💵 Uang yang Diterima (Rp):</label>
-              <input type="number" id="saleTenderedAmount" class="form-control font-bold" min="0" step="100" placeholder="Contoh: 100000" />
+              <input type="text" id="saleTenderedAmount" class="form-control font-bold" placeholder="Rp 0 (Contoh: Rp 100.000)" style="font-size: 1.1rem;" />
             </div>
             <div class="form-group" id="groupSaleChangeDisplay">
               <label class="form-label font-bold">Kembalian yang Harus Diberikan:</label>
-              <div id="saleChangeAmountDisplay" class="font-bold text-primary" style="font-size: 1.2rem; padding-top: 0.35rem;">Rp 0</div>
+              <div id="saleChangeAmountDisplay" class="font-bold text-primary" style="font-size: 1.25rem; padding-top: 0.35rem;">Rp 0</div>
             </div>
 
             <!-- Bagian Tempo Piutang / Bon -->
             <div class="form-group" id="groupSalePaidAmount" style="display: none;">
               <label class="form-label">Uang Muka / DP (Rp):</label>
-              <input type="number" id="saleDebtDP" class="form-control font-semibold" min="0" step="100" placeholder="0" />
+              <input type="text" id="saleDebtDP" class="form-control font-semibold" placeholder="Rp 0" />
             </div>
             <div class="form-group" id="groupSaleDueDate" style="display: none;">
               <label class="form-label">Tanggal Jatuh Tempo Bon:</label>
@@ -1104,7 +1104,7 @@
             </div>
             <div class="form-group" id="groupSaleDebtCalc" style="display: none;">
               <label class="form-label">Sisa Bon Piutang:</label>
-              <div id="saleDebtDisplay" class="font-bold text-danger" style="font-size: 1.1rem; padding-top: 0.35rem;">Rp 0</div>
+              <div id="saleDebtDisplay" class="font-bold text-danger" style="font-size: 1.2rem; padding-top: 0.35rem;">Rp 0</div>
             </div>
           </div>
 

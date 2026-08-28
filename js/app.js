@@ -22,6 +22,19 @@ class AppController {
     this.init();
   }
 
+  parseRupiah(val) {
+    if (typeof val === 'number') return isNaN(val) ? 0 : val;
+    if (!val) return 0;
+    const clean = String(val).replace(/[^0-9,-]/g, '').replace(',', '.');
+    return parseFloat(clean) || 0;
+  }
+
+  formatRupiahString(val) {
+    const num = this.parseRupiah(val);
+    if (num === 0) return '';
+    return 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(num));
+  }
+
   async init() {
     this.initTheme();
     this.populateCategoryOptions();
@@ -1200,7 +1213,10 @@ class AppController {
     if (pctInput) pctInput.value = '';
 
     const discInput = document.getElementById('saleDiscountAmount');
-    if (discInput) discInput.value = '';
+    if (discInput) {
+      discInput.value = '';
+      discInput.dataset.rawValue = '0';
+    }
 
     const hintEl = document.getElementById('saleDiscountSummaryHint');
     if (hintEl) {
@@ -1209,15 +1225,38 @@ class AppController {
     }
 
     const subtotalInput = document.getElementById('saleSubtotalAmount');
-    if (subtotalInput) subtotalInput.value = 0;
+    if (subtotalInput) {
+      subtotalInput.value = 'Rp 0';
+      subtotalInput.dataset.rawValue = '0';
+    }
+
+    const totalInput = document.getElementById('saleTotalAmount');
+    if (totalInput) {
+      totalInput.value = 'Rp 0';
+      totalInput.dataset.rawValue = '0';
+    }
 
     const tenderedInput = document.getElementById('saleTenderedAmount');
-    if (tenderedInput) tenderedInput.value = '';
+    if (tenderedInput) {
+      tenderedInput.value = '';
+      tenderedInput.dataset.rawValue = '0';
+    }
+
+    const debtDPInput = document.getElementById('saleDebtDP');
+    if (debtDPInput) {
+      debtDPInput.value = '';
+      debtDPInput.dataset.rawValue = '0';
+    }
 
     const changeDisplay = document.getElementById('saleChangeAmountDisplay');
     if (changeDisplay) {
       changeDisplay.textContent = 'Rp 0';
       changeDisplay.className = 'font-bold text-muted';
+    }
+
+    const debtDisplay = document.getElementById('saleDebtDisplay');
+    if (debtDisplay) {
+      debtDisplay.textContent = 'Rp 0';
     }
 
     const container = document.getElementById('saleItemsBuilderContainer');
@@ -1258,7 +1297,7 @@ class AppController {
         <datalist id="${datalistId}">
           ${productsList.map(p => {
             const packInfo = p.hasMultiUnit ? ` | 📦 1 ${p.packUnit}=${p.packRatio} ${p.unit}` : '';
-            return `<option value="${p.name}" data-id="${p.id}" data-unit="${p.unit}" data-price="${p.sellPrice}" data-buy="${p.buyPrice}">Stok: ${p.stock} ${p.unit}${packInfo} | Rp ${p.sellPrice}</option>`;
+            return `<option value="${p.name}" data-id="${p.id}" data-unit="${p.unit}" data-price="${p.sellPrice}" data-buy="${p.buyPrice}">Stok: ${p.stock} ${p.unit}${packInfo} | ${this.store.formatRupiah(p.sellPrice)}</option>`;
           }).join('')}
         </datalist>
         <input type="hidden" class="item-product-id" value="${productId || (matched ? matched.id : '')}" />
@@ -1271,12 +1310,13 @@ class AppController {
         <div class="item-qty-warning text-xs text-danger font-bold" style="display: none; margin-top: 2px;"></div>
       </div>
       <div class="item-unit-wrapper">${unitControlHTML}</div>
-      <input type="number" class="form-control item-price" placeholder="Harga Jual (Rp)" value="${price}" min="0" step="100" required />
+      <input type="text" class="form-control item-price" placeholder="Harga Jual (Rp)" value="${price > 0 ? this.store.formatRupiah(price) : 'Rp 0'}" data-raw-value="${price}" required />
       <button type="button" class="btn-icon-only text-danger btn-remove-item" title="Hapus Baris" style="margin-top: 5px;">✕</button>
     `;
 
     const nameInput = row.querySelector('.item-name');
     const qtyInput = row.querySelector('.item-qty');
+    const priceInput = row.querySelector('.item-price');
     const unitWrapper = row.querySelector('.item-unit-wrapper');
     const stockBadge = row.querySelector('.item-stock-badge');
     const qtyWarning = row.querySelector('.item-qty-warning');
@@ -1331,13 +1371,17 @@ class AppController {
         const sel = unitWrapper.querySelector('.item-unit-select');
         const selectedOpt = sel.options[sel.selectedIndex];
         row.querySelector('.item-unit-ratio').value = selectedOpt.dataset.ratio || 1;
-        row.querySelector('.item-price').value = selectedOpt.dataset.price || prod.sellPrice;
+        const pPrice = parseFloat(selectedOpt.dataset.price) || prod.sellPrice;
+        row.querySelector('.item-price').value = this.store.formatRupiah(pPrice);
+        row.querySelector('.item-price').dataset.rawValue = pPrice;
         row.querySelector('.item-cogs').value = selectedOpt.dataset.buy || prod.buyPrice;
 
         sel.addEventListener('change', (e) => {
           const opt = e.target.options[e.target.selectedIndex];
           row.querySelector('.item-unit-ratio').value = opt.dataset.ratio || 1;
-          row.querySelector('.item-price').value = opt.dataset.price || 0;
+          const optPrice = parseFloat(opt.dataset.price) || 0;
+          row.querySelector('.item-price').value = this.store.formatRupiah(optPrice);
+          row.querySelector('.item-price').dataset.rawValue = optPrice;
           row.querySelector('.item-cogs').value = opt.dataset.buy || 0;
           validateAndRenderStock(prod);
           this.recalculateSaleItemsTotal();
@@ -1345,7 +1389,8 @@ class AppController {
       } else {
         unitWrapper.innerHTML = `<input type="text" class="form-control item-unit" placeholder="Satuan" value="${prod.unit || 'Pcs'}" />`;
         row.querySelector('.item-unit-ratio').value = 1;
-        row.querySelector('.item-price').value = prod.sellPrice;
+        row.querySelector('.item-price').value = this.store.formatRupiah(prod.sellPrice);
+        row.querySelector('.item-price').dataset.rawValue = prod.sellPrice;
         row.querySelector('.item-cogs').value = prod.buyPrice;
       }
       validateAndRenderStock(prod);
@@ -1370,8 +1415,15 @@ class AppController {
       this.recalculateSaleItemsTotal();
     });
 
-    row.querySelectorAll('input').forEach(inp => {
-      inp.addEventListener('input', () => this.recalculateSaleItemsTotal());
+    priceInput.addEventListener('input', () => {
+      const raw = this.parseRupiah(priceInput.value);
+      priceInput.dataset.rawValue = raw;
+      if (raw > 0) {
+        priceInput.value = this.formatRupiahString(raw);
+      } else {
+        priceInput.value = '';
+      }
+      this.recalculateSaleItemsTotal();
     });
 
     const initialSel = row.querySelector('.item-unit-select');
@@ -1379,7 +1431,9 @@ class AppController {
       initialSel.addEventListener('change', (e) => {
         const opt = e.target.options[e.target.selectedIndex];
         row.querySelector('.item-unit-ratio').value = opt.dataset.ratio || 1;
-        row.querySelector('.item-price').value = opt.dataset.price || 0;
+        const optPrice = parseFloat(opt.dataset.price) || 0;
+        row.querySelector('.item-price').value = this.store.formatRupiah(optPrice);
+        row.querySelector('.item-price').dataset.rawValue = optPrice;
         row.querySelector('.item-cogs').value = opt.dataset.buy || 0;
         const prodId = row.querySelector('.item-product-id')?.value;
         const prod = productsList.find(p => p.id === prodId);
@@ -1408,12 +1462,15 @@ class AppController {
     const rows = container.querySelectorAll('.items-builder-row');
     rows.forEach(row => {
       const qty = parseFloat(row.querySelector('.item-qty')?.value) || 0;
-      const price = parseFloat(row.querySelector('.item-price')?.value) || 0;
+      const price = this.parseRupiah(row.querySelector('.item-price')?.dataset?.rawValue || row.querySelector('.item-price')?.value) || 0;
       subtotal += (qty * price);
     });
 
     const elSubtotal = document.getElementById('saleSubtotalAmount');
-    if (elSubtotal) elSubtotal.value = subtotal;
+    if (elSubtotal) {
+      elSubtotal.dataset.rawValue = subtotal;
+      elSubtotal.value = this.store.formatRupiah(subtotal);
+    }
 
     const pctInput = document.getElementById('saleDiscountPercent');
     const pct = parseFloat(pctInput?.value) || 0;
@@ -1422,38 +1479,54 @@ class AppController {
 
     if (pct > 0) {
       discount = Math.round((subtotal * pct) / 100);
-      if (amountInput) amountInput.value = discount > 0 ? discount : '';
+      if (amountInput) {
+        amountInput.dataset.rawValue = discount;
+        amountInput.value = discount > 0 ? this.formatRupiahString(discount) : '';
+      }
       const hintEl = document.getElementById('saleDiscountSummaryHint');
       if (hintEl) {
         hintEl.textContent = `💡 Potongan ${pct}% = Hemat ${this.store.formatRupiah(discount)}`;
         hintEl.className = 'text-xs font-semibold text-danger';
       }
     } else {
-      discount = parseFloat(amountInput?.value) || 0;
+      discount = this.parseRupiah(amountInput?.dataset?.rawValue || amountInput?.value) || 0;
+      if (amountInput && discount > 0) {
+        amountInput.value = this.formatRupiahString(discount);
+      }
     }
 
     const total = Math.max(0, subtotal - discount);
     const elTotal = document.getElementById('saleTotalAmount');
-    if (elTotal) elTotal.value = total;
+    if (elTotal) {
+      elTotal.dataset.rawValue = total;
+      elTotal.value = this.store.formatRupiah(total);
+    }
 
     this.handleSaleAmountChange();
   }
 
   handleSaleDiscountPercentChange() {
-    const subtotal = parseFloat(document.getElementById('saleSubtotalAmount')?.value) || 0;
+    const elSubtotal = document.getElementById('saleSubtotalAmount');
+    const subtotal = this.parseRupiah(elSubtotal?.dataset?.rawValue || elSubtotal?.value) || 0;
     const pct = parseFloat(document.getElementById('saleDiscountPercent')?.value) || 0;
     const hintEl = document.getElementById('saleDiscountSummaryHint');
     const amountInput = document.getElementById('saleDiscountAmount');
 
     if (pct > 0 && subtotal > 0) {
       const discountVal = Math.round((subtotal * pct) / 100);
-      if (amountInput) amountInput.value = discountVal;
+      if (amountInput) {
+        amountInput.dataset.rawValue = discountVal;
+        amountInput.value = this.formatRupiahString(discountVal);
+      }
       if (hintEl) {
         hintEl.textContent = `💡 Potongan ${pct}% = Hemat ${this.store.formatRupiah(discountVal)}`;
         hintEl.className = 'text-xs font-semibold text-danger';
       }
     } else if (pct === 0) {
-      if (amountInput) amountInput.value = '';
+      if (amountInput) {
+        amountInput.dataset.rawValue = 0;
+        amountInput.value = '';
+      }
       if (hintEl) {
         hintEl.textContent = 'Ketik persen (misal: 25%) atau nominal rupiah';
         hintEl.className = 'text-xs text-muted';
@@ -1464,8 +1537,14 @@ class AppController {
   }
 
   handleSaleDiscountAmountChange() {
-    const subtotal = parseFloat(document.getElementById('saleSubtotalAmount')?.value) || 0;
-    const discountVal = parseFloat(document.getElementById('saleDiscountAmount')?.value) || 0;
+    const elSubtotal = document.getElementById('saleSubtotalAmount');
+    const subtotal = this.parseRupiah(elSubtotal?.dataset?.rawValue || elSubtotal?.value) || 0;
+    const amountInput = document.getElementById('saleDiscountAmount');
+    const discountVal = this.parseRupiah(amountInput?.value) || 0;
+    if (amountInput) {
+      amountInput.dataset.rawValue = discountVal;
+      amountInput.value = discountVal > 0 ? this.formatRupiahString(discountVal) : '';
+    }
     const hintEl = document.getElementById('saleDiscountSummaryHint');
     const pctInput = document.getElementById('saleDiscountPercent');
 
@@ -1485,6 +1564,24 @@ class AppController {
       }
     }
 
+    this.handleSaleAmountChange();
+  }
+
+  handleSaleTenderedInput() {
+    const input = document.getElementById('saleTenderedAmount');
+    if (!input) return;
+    const raw = this.parseRupiah(input.value);
+    input.dataset.rawValue = raw;
+    input.value = raw > 0 ? this.formatRupiahString(raw) : '';
+    this.handleSaleAmountChange();
+  }
+
+  handleSaleDebtDPInput() {
+    const input = document.getElementById('saleDebtDP');
+    if (!input) return;
+    const raw = this.parseRupiah(input.value);
+    input.dataset.rawValue = raw;
+    input.value = raw > 0 ? this.formatRupiahString(raw) : '';
     this.handleSaleAmountChange();
   }
 
@@ -1520,26 +1617,32 @@ class AppController {
   }
 
   handleSaleAmountChange() {
-    const subtotal = parseFloat(document.getElementById('saleSubtotalAmount')?.value) || 0;
-    const discount = parseFloat(document.getElementById('saleDiscountAmount')?.value) || 0;
+    const elSubtotal = document.getElementById('saleSubtotalAmount');
+    const subtotal = this.parseRupiah(elSubtotal?.dataset?.rawValue || elSubtotal?.value) || 0;
+
+    const amountInput = document.getElementById('saleDiscountAmount');
+    const discount = this.parseRupiah(amountInput?.dataset?.rawValue || amountInput?.value) || 0;
+
     const totalAmount = Math.max(0, subtotal - discount);
 
     const elTotal = document.getElementById('saleTotalAmount');
-    if (elTotal && parseFloat(elTotal.value) !== totalAmount) {
-      elTotal.value = totalAmount;
+    if (elTotal) {
+      elTotal.dataset.rawValue = totalAmount;
+      elTotal.value = this.store.formatRupiah(totalAmount);
     }
 
     const method = document.getElementById('salePaymentMethod')?.value || 'cash';
 
     if (method === 'piutang') {
-      const dp = parseFloat(document.getElementById('saleDebtDP')?.value) || 0;
+      const dpInput = document.getElementById('saleDebtDP');
+      const dp = this.parseRupiah(dpInput?.dataset?.rawValue || dpInput?.value) || 0;
       const debt = Math.max(0, totalAmount - dp);
       const debtEl = document.getElementById('saleDebtDisplay');
       if (debtEl) debtEl.textContent = this.store.formatRupiah(debt);
     } else {
       const tenderedInput = document.getElementById('saleTenderedAmount');
       const changeDisplay = document.getElementById('saleChangeAmountDisplay');
-      const tendered = parseFloat(tenderedInput?.value) || 0;
+      const tendered = this.parseRupiah(tenderedInput?.dataset?.rawValue || tenderedInput?.value) || 0;
 
       if (!changeDisplay) return;
 
@@ -2190,9 +2293,8 @@ class AppController {
     document.getElementById('salePaymentMethod')?.addEventListener('change', () => this.handleSalePaymentMethodChange());
     document.getElementById('saleDiscountPercent')?.addEventListener('input', () => this.handleSaleDiscountPercentChange());
     document.getElementById('saleDiscountAmount')?.addEventListener('input', () => this.handleSaleDiscountAmountChange());
-    document.getElementById('saleTotalAmount')?.addEventListener('input', () => this.handleSaleAmountChange());
-    document.getElementById('saleTenderedAmount')?.addEventListener('input', () => this.handleSaleAmountChange());
-    document.getElementById('saleDebtDP')?.addEventListener('input', () => this.handleSaleAmountChange());
+    document.getElementById('saleTenderedAmount')?.addEventListener('input', () => this.handleSaleTenderedInput());
+    document.getElementById('saleDebtDP')?.addEventListener('input', () => this.handleSaleDebtDPInput());
     document.getElementById('formNewSale')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       await this.handleSaveSale();
@@ -2347,12 +2449,14 @@ class AppController {
       return;
     }
 
-    const totalAmount = parseFloat(document.getElementById('saleTotalAmount')?.value) || 0;
+    const totalEl = document.getElementById('saleTotalAmount');
+    const totalAmount = this.parseRupiah(totalEl?.dataset?.rawValue || totalEl?.value) || 0;
     const method = document.getElementById('salePaymentMethod')?.value || 'cash';
     let paidAmount = totalAmount;
 
     if (method === 'piutang') {
-      paidAmount = parseFloat(document.getElementById('saleDebtDP')?.value) || 0;
+      const dpEl = document.getElementById('saleDebtDP');
+      paidAmount = this.parseRupiah(dpEl?.dataset?.rawValue || dpEl?.value) || 0;
     } else {
       paidAmount = totalAmount;
     }
@@ -2360,12 +2464,15 @@ class AppController {
     const primaryCategory = (items[0] && items[0].id) ? (this.inventory?.products.find(p => p.id === items[0].id)?.category || 'lainnya') : 'lainnya';
     const customer = document.getElementById('saleCustomerName')?.value.trim() || 'Pelanggan Umum';
 
-    const tendered = parseFloat(document.getElementById('saleTenderedAmount')?.value) || 0;
+    const tenderedEl = document.getElementById('saleTenderedAmount');
+    const tendered = this.parseRupiah(tenderedEl?.dataset?.rawValue || tenderedEl?.value) || 0;
     const change = (tendered >= totalAmount && method === 'cash') ? (tendered - totalAmount) : 0;
 
-    const subtotalAmount = parseFloat(document.getElementById('saleSubtotalAmount')?.value) || totalAmount;
+    const subtotalEl = document.getElementById('saleSubtotalAmount');
+    const subtotalAmount = this.parseRupiah(subtotalEl?.dataset?.rawValue || subtotalEl?.value) || totalAmount;
     const discountPercent = parseFloat(document.getElementById('saleDiscountPercent')?.value) || 0;
-    const discountAmount = parseFloat(document.getElementById('saleDiscountAmount')?.value) || 0;
+    const discountEl = document.getElementById('saleDiscountAmount');
+    const discountAmount = this.parseRupiah(discountEl?.dataset?.rawValue || discountEl?.value) || 0;
 
     const txData = {
       type: 'in',
