@@ -20,6 +20,19 @@ class InventoryStore {
       const savedProducts = localStorage.getItem(STORAGE_KEYS_INVENTORY.PRODUCTS);
       if (savedProducts) {
         this.products = JSON.parse(savedProducts);
+        // Auto-assign code & barcode if missing
+        let modified = false;
+        this.products.forEach(p => {
+          if (!p.code) {
+            p.code = p.id.toUpperCase();
+            modified = true;
+          }
+          if (!p.barcode) {
+            p.barcode = p.code || p.id;
+            modified = true;
+          }
+        });
+        if (modified) this.save();
       } else {
         this.products = [];
         this.save();
@@ -53,6 +66,24 @@ class InventoryStore {
     return `PRD-${String(nextNum).padStart(3, '0')}`;
   }
 
+  generateProductCode() {
+    const nextNum = this.products.length + 1;
+    return `BRG-${String(nextNum).padStart(3, '0')}`;
+  }
+
+  findProductByQuery(query) {
+    if (!query) return null;
+    const q = String(query).trim().toLowerCase();
+    return this.products.find(p => 
+      (p.barcode && p.barcode.toLowerCase() === q) ||
+      (p.code && p.code.toLowerCase() === q) ||
+      p.id.toLowerCase() === q ||
+      p.name.toLowerCase() === q ||
+      p.name.toLowerCase().startsWith(q) ||
+      (p.code && p.code.toLowerCase().startsWith(q))
+    ) || null;
+  }
+
   addProduct(data) {
     const hasMultiUnit = Boolean(data.hasMultiUnit);
     const packRatio = hasMultiUnit ? Math.max(1, Number(data.packRatio) || 1) : 1;
@@ -65,8 +96,13 @@ class InventoryStore {
       baseBuyPrice = Math.round(packBuyPrice / packRatio);
     }
 
+    const code = (data.code || this.generateProductCode()).trim().toUpperCase();
+    const barcode = (data.barcode || code).trim();
+
     const newProduct = {
       id: data.id || this.generateProductId(),
+      code: code,
+      barcode: barcode,
       name: data.name.trim(),
       category: data.category || "lainnya",
       unit: (data.unit || "Pcs").trim(),
@@ -98,10 +134,14 @@ class InventoryStore {
     const old = this.products[idx];
     const hasMultiUnit = updatedFields.hasMultiUnit !== undefined ? Boolean(updatedFields.hasMultiUnit) : old.hasMultiUnit;
     const packRatio = hasMultiUnit ? Math.max(1, Number(updatedFields.packRatio !== undefined ? updatedFields.packRatio : old.packRatio) || 1) : 1;
-    
+    const code = updatedFields.code ? updatedFields.code.trim().toUpperCase() : (old.code || old.id);
+    const barcode = updatedFields.barcode ? updatedFields.barcode.trim() : (old.barcode || code);
+
     const updated = { 
       ...old, 
       ...updatedFields, 
+      code,
+      barcode,
       hasMultiUnit,
       packRatio,
       updatedAt: new Date().toISOString() 
@@ -283,8 +323,10 @@ class InventoryStore {
         const q = search.toLowerCase();
         const nameMatch = p.name.toLowerCase().includes(q);
         const idMatch = p.id.toLowerCase().includes(q);
+        const codeMatch = p.code ? p.code.toLowerCase().includes(q) : false;
+        const barcodeMatch = p.barcode ? p.barcode.toLowerCase().includes(q) : false;
         const locMatch = (p.location || '').toLowerCase().includes(q);
-        if (!nameMatch && !idMatch && !locMatch) return false;
+        if (!nameMatch && !idMatch && !codeMatch && !barcodeMatch && !locMatch) return false;
       }
       return true;
     });

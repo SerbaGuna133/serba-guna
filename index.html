@@ -1051,8 +1051,24 @@
             </div>
           </div>
 
+          <!-- Quick Barcode Scanner / SKU Search Bar -->
+          <div class="pos-scan-box" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(6, 95, 70, 0.05)); border: 1.5px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-md); padding: 0.65rem 0.85rem; margin-top: 0.85rem; margin-bottom: 0.85rem;">
+            <div class="d-flex align-center gap-2">
+              <span style="font-size: 1.3rem;">📷</span>
+              <div class="flex-1">
+                <label for="saleBarcodeScannerInput" class="form-label font-bold text-success" style="margin-bottom: 0.2rem; font-size: 0.82rem;">
+                  ⚡ Scan Barcode / Ketik Kode Barang Cepat:
+                </label>
+                <div class="d-flex gap-2">
+                  <input type="text" id="saleBarcodeScannerInput" class="form-control font-mono font-bold" placeholder="Scan barcode alat scanner atau ketik kode (misal: BRG-001) lalu tekan Enter..." autocomplete="off" />
+                  <button type="button" class="btn btn-success btn-sm" id="btnApplyBarcodeScan"><span>🔍</span> Scan / Cari</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Rincian Barang yang Dijual -->
-          <div class="form-group mt-3">
+          <div class="form-group">
             <div class="d-flex align-center justify-between mb-1">
               <label class="form-label font-bold" style="margin-bottom: 0;">Rincian Barang yang Dijual:</label>
               <button type="button" class="btn btn-outline btn-sm" id="btnAddSaleItemRow">
@@ -1279,9 +1295,18 @@
       <form id="formNewProduct">
         <input type="hidden" id="modalProdId" />
         <div class="modal-body">
-          <div class="form-group">
-            <label class="form-label">Nama Barang / Material:</label>
-            <input type="text" id="modalProdName" class="form-control" placeholder="Contoh: Semen Gresik 50kg / Besi 10 SNI" required />
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label font-bold">🏷️ Kode / Barcode Barang:</label>
+              <div class="d-flex gap-1">
+                <input type="text" id="modalProdCode" class="form-control font-mono font-bold" placeholder="Contoh: BRG-001 / 89912345" required />
+                <button type="button" class="btn btn-outline btn-sm" id="btnGenerateBarcode" title="Generate Kode Otomatis">✨ Auto</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label font-bold">Nama Barang / Material:</label>
+              <input type="text" id="modalProdName" class="form-control" placeholder="Contoh: Semen Gresik 50kg / Besi 10 SNI" required />
+            </div>
           </div>
 
           <div class="form-grid">

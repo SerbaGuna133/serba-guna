@@ -579,7 +579,10 @@ class AppController {
 
       return `
         <tr>
-          <td class="font-mono text-xs"><strong>${p.id}</strong></td>
+          <td>
+            <div class="font-mono text-xs font-bold" style="color: var(--primary);">🏷️ ${p.code || p.id}</div>
+            ${p.barcode && p.barcode !== (p.code || p.id) ? `<div class="text-xs text-muted font-mono">||| ${p.barcode}</div>` : ''}
+          </td>
           <td>
             <strong>${p.name}</strong>
             ${p.hasMultiUnit ? `<div style="font-size: 0.72rem; color: #d97706; font-weight: 600; margin-top: 0.15rem;">📦 1 ${p.packUnit} = ${p.packRatio} ${p.unit}</div>` : ''}
@@ -1283,12 +1286,97 @@ class AppController {
       debtDisplay.textContent = 'Rp 0';
     }
 
+    const scannerInput = document.getElementById('saleBarcodeScannerInput');
+    if (scannerInput) scannerInput.value = '';
+
     const container = document.getElementById('saleItemsBuilderContainer');
     if (container) container.innerHTML = '';
     this.addSaleItemRow();
 
     this.handleSalePaymentMethodChange();
     this.openModal('modalNewSale');
+
+    setTimeout(() => {
+      if (scannerInput) scannerInput.focus();
+    }, 200);
+  }
+
+  playBeepSound() {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.12);
+    } catch (e) {}
+  }
+
+  handleBarcodeScanInPOS(codeQuery) {
+    if (!codeQuery || !codeQuery.trim()) return;
+    const q = codeQuery.trim();
+    const prod = this.inventory ? this.inventory.findProductByQuery(q) : null;
+
+    if (!prod) {
+      this.showToast(`⚠️ Barang dengan kode/barcode "${q}" tidak ditemukan di Master Barang!`, 'danger');
+      return;
+    }
+
+    this.playBeepSound();
+
+    // Check if product is already in the builder rows
+    const rows = document.querySelectorAll('#saleItemsBuilderContainer .items-builder-row');
+    let existingRow = null;
+
+    rows.forEach(r => {
+      const pId = r.querySelector('.item-product-id')?.value;
+      const name = r.querySelector('.item-name')?.value.trim();
+      if ((pId && pId === prod.id) || (name && name.toLowerCase() === prod.name.toLowerCase())) {
+        existingRow = r;
+      }
+    });
+
+    if (existingRow) {
+      // Increment existing qty by 1
+      const qtyInput = existingRow.querySelector('.item-qty');
+      if (qtyInput) {
+        const curQty = parseFloat(qtyInput.value) || 0;
+        qtyInput.value = curQty + 1;
+        qtyInput.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        // Visual green pulse
+        existingRow.style.transition = 'background 0.3s';
+        existingRow.style.background = 'rgba(16, 185, 129, 0.2)';
+        setTimeout(() => { existingRow.style.background = ''; }, 600);
+      }
+    } else {
+      // Check if first row is empty
+      if (rows.length === 1 && !rows[0].querySelector('.item-name')?.value.trim()) {
+        const row = rows[0];
+        const nameInput = row.querySelector('.item-name');
+        nameInput.value = prod.name;
+        nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+      } else {
+        this.addSaleItemRow(prod.name, 1, prod.unit, prod.sellPrice, prod.id);
+      }
+    }
+
+    this.recalculateSaleItemsTotal();
+    this.showToast(`✅ [${prod.code || prod.id}] ${prod.name} ditambahkan (+1)!`, 'success');
+
+    // Reset scanner input and refocus
+    const scannerInput = document.getElementById('saleBarcodeScannerInput');
+    if (scannerInput) {
+      scannerInput.value = '';
+      scannerInput.focus();
+    }
   }
 
   addSaleItemRow(name = '', qty = 1, unit = 'Pcs', price = 0, productId = '', unitRatio = 1) {
@@ -1317,11 +1405,16 @@ class AppController {
 
     row.innerHTML = `
       <div>
-        <input type="text" list="${datalistId}" class="form-control item-name" placeholder="Ketik / cari nama material..." value="${name}" required />
+        <input type="text" list="${datalistId}" class="form-control item-name" placeholder="Ketik kode / nama / scan..." value="${name}" required />
         <datalist id="${datalistId}">
           ${productsList.map(p => {
+            const codeTag = p.code || p.id;
             const packInfo = p.hasMultiUnit ? ` | 📦 1 ${p.packUnit}=${p.packRatio} ${p.unit}` : '';
-            return `<option value="${p.name}" data-id="${p.id}" data-unit="${p.unit}" data-price="${p.sellPrice}" data-buy="${p.buyPrice}">Stok: ${p.stock} ${p.unit}${packInfo} | ${this.store.formatRupiah(p.sellPrice)}</option>`;
+            return `
+              <option value="${p.name}">[${codeTag}] Stok: ${p.stock} ${p.unit}${packInfo} | ${this.store.formatRupiah(p.sellPrice)}</option>
+              <option value="${codeTag}">[${p.name}] Stok: ${p.stock} ${p.unit}${packInfo} | ${this.store.formatRupiah(p.sellPrice)}</option>
+              ${p.barcode && p.barcode !== codeTag ? `<option value="${p.barcode}">[${p.name}] Barcode</option>` : ''}
+            `;
           }).join('')}
         </datalist>
         <input type="hidden" class="item-product-id" value="${productId || (matched ? matched.id : '')}" />
@@ -1421,14 +1514,42 @@ class AppController {
       this.recalculateSaleItemsTotal();
     };
 
-    nameInput.addEventListener('input', (e) => {
-      const val = e.target.value;
-      const found = productsList.find(p => p.name.toLowerCase() === val.toLowerCase());
+    const applyMatchedProduct = (found) => {
       if (found) {
+        nameInput.value = found.name;
         row.querySelector('.item-product-id').value = found.id;
         updateUnitControl(found);
+        setTimeout(() => {
+          qtyInput.focus();
+          qtyInput.select();
+        }, 50);
       } else {
         validateAndRenderStock(null);
+      }
+    };
+
+    nameInput.addEventListener('input', (e) => {
+      const val = e.target.value.trim();
+      if (!val) {
+        validateAndRenderStock(null);
+        return;
+      }
+      const found = this.inventory ? this.inventory.findProductByQuery(val) : null;
+      if (found) {
+        applyMatchedProduct(found);
+      } else {
+        validateAndRenderStock(null);
+      }
+    });
+
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const val = nameInput.value.trim();
+        const found = this.inventory ? this.inventory.findProductByQuery(val) : null;
+        if (found) {
+          applyMatchedProduct(found);
+        }
       }
     });
 
@@ -1884,6 +2005,11 @@ class AppController {
     if (form) form.reset();
     document.getElementById('modalProductTitle').textContent = `📦 Tambah Master Barang Material`;
     
+    const codeInput = document.getElementById('modalProdCode');
+    if (codeInput && this.inventory) {
+      codeInput.value = this.inventory.generateProductCode();
+    }
+
     const multiChk = document.getElementById('modalProdHasMultiUnit');
     if (multiChk) multiChk.checked = false;
     this.toggleMultiUnitFields();
@@ -1898,6 +2024,7 @@ class AppController {
 
     this.editingProdId = productId;
     document.getElementById('modalProductTitle').textContent = `✏️ Edit Barang: ${p.name}`;
+    document.getElementById('modalProdCode').value = p.code || p.id;
     document.getElementById('modalProdName').value = p.name;
     document.getElementById('modalProdCategory').value = p.category;
     document.getElementById('modalProdUnit').value = p.unit;
@@ -2313,6 +2440,23 @@ class AppController {
     document.getElementById('btnOpenNewPurchaseModal')?.addEventListener('click', () => this.openNewPurchaseModal());
 
     // Sales Form Events
+    document.getElementById('saleBarcodeScannerInput')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.handleBarcodeScanInPOS(e.target.value);
+      }
+    });
+    document.getElementById('btnApplyBarcodeScan')?.addEventListener('click', () => {
+      const input = document.getElementById('saleBarcodeScannerInput');
+      if (input) this.handleBarcodeScanInPOS(input.value);
+    });
+    document.getElementById('btnGenerateBarcode')?.addEventListener('click', () => {
+      const codeInput = document.getElementById('modalProdCode');
+      if (codeInput && this.inventory) {
+        codeInput.value = this.inventory.generateProductCode();
+      }
+    });
+
     document.getElementById('btnAddSaleItemRow')?.addEventListener('click', () => this.addSaleItemRow());
     document.getElementById('salePaymentMethod')?.addEventListener('change', () => this.handleSalePaymentMethodChange());
     document.getElementById('saleDiscountPercent')?.addEventListener('input', () => this.handleSaleDiscountPercentChange());
@@ -2640,7 +2784,11 @@ class AppController {
     const stock = parseFloat(document.getElementById('modalProdStock').value) || 0;
     const totalAssetVal = buyPrice * stock;
 
+    const code = (document.getElementById('modalProdCode')?.value || '').trim().toUpperCase();
+
     const prodData = {
+      code: code || undefined,
+      barcode: code || undefined,
       name: document.getElementById('modalProdName').value.trim(),
       category: document.getElementById('modalProdCategory').value,
       unit: document.getElementById('modalProdUnit').value.trim() || 'Pcs',
@@ -2658,10 +2806,10 @@ class AppController {
 
     if (this.editingProdId) {
       this.inventory.updateProduct(this.editingProdId, prodData);
-      this.showToast(`Data barang diperbarui! Total Nilai Aset: ${this.store.formatRupiah(totalAssetVal)}`);
+      this.showToast(`Data barang [${code || 'OK'}] diperbarui! Total Nilai Aset: ${this.store.formatRupiah(totalAssetVal)}`);
     } else {
       this.inventory.addProduct(prodData);
-      this.showToast(`Barang masuk dicatat! Total Nilai Aset (HPP): ${this.store.formatRupiah(totalAssetVal)}`);
+      this.showToast(`Barang baru [${code || 'OK'}] dicatat! Total Nilai Aset (HPP): ${this.store.formatRupiah(totalAssetVal)}`);
     }
 
     this.closeModal('modalNewProduct');
