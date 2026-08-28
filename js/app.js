@@ -1085,7 +1085,8 @@ class AppController {
 
   handleTxTypeOrMethodChange() {
     const type = document.getElementById('modalTxType').value;
-    const method = document.getElementById('modalTxPaymentMethod').value;
+    const methodSelect = document.getElementById('modalTxPaymentMethod');
+    let currentMethod = methodSelect.value;
     const contactLabel = document.getElementById('modalTxContactLabel');
     const contactInput = document.getElementById('modalTxContactName');
     const groupDueDate = document.getElementById('groupDueDate');
@@ -1095,15 +1096,33 @@ class AppController {
     if (type === 'in') {
       contactLabel.textContent = 'Nama Pelanggan / Kontraktor Proyek:';
       contactInput.placeholder = 'Contoh: Pak Haji Bambang (Proyek Ruko 2 Lantai)';
+      if (currentMethod === 'hutang') currentMethod = 'piutang';
+
+      methodSelect.innerHTML = `
+        <option value="cash" ${currentMethod === 'cash' ? 'selected' : ''}>💵 Tunai Kasir Langsung (Kas Toko)</option>
+        <option value="transfer" ${currentMethod === 'transfer' ? 'selected' : ''}>💳 Transfer Bank BCA / QRIS / EDC</option>
+        <option value="piutang" ${currentMethod === 'piutang' ? 'selected' : ''}>📑 Bon Pelanggan / Piutang Proyek (Bisa DP / Bayar Nanti)</option>
+      `;
     } else {
       contactLabel.textContent = 'Nama Supplier / Penerima Biaya:';
       contactInput.placeholder = 'Contoh: Distributor Semen Gresik / Tim Kuli Bongkar';
+      if (currentMethod === 'piutang') currentMethod = 'hutang';
+
+      methodSelect.innerHTML = `
+        <option value="cash" ${currentMethod === 'cash' ? 'selected' : ''}>💵 Tunai Kasir (Keluar Kas Toko)</option>
+        <option value="transfer" ${currentMethod === 'transfer' ? 'selected' : ''}>💳 Transfer Bank BCA (Keluar Rekening Bank)</option>
+        <option value="hutang" ${currentMethod === 'hutang' ? 'selected' : ''}>🤝 Tempo Supplier / Hutang Dagang (Distributor)</option>
+      `;
     }
 
-    if (method === 'piutang' || method === 'hutang') {
+    const activeMethod = methodSelect.value;
+
+    if (activeMethod === 'piutang' || activeMethod === 'hutang') {
       groupDueDate.style.display = 'block';
       groupDebtCalc.style.display = 'block';
-      labelPaidAmount.textContent = 'Uang Muka / DP yang Dibayar Saat Ini (Rp):';
+      labelPaidAmount.textContent = activeMethod === 'piutang' 
+        ? 'Uang Muka / DP yang Diterima Saat Ini (Rp):' 
+        : 'Uang Muka / DP yang Dibayar ke Supplier (Rp):';
       const dueInput = document.getElementById('modalTxDueDate');
       if (!dueInput.value) {
         const d = new Date();
