@@ -148,9 +148,9 @@
         </div>
       </div>
 
-      <!-- Bottom Row: Clean Full-Width Navigation Tabs -->
+      <!-- Bottom Row: Clean Full-Width Navigation Tabs & Top Tools -->
       <div class="header-nav-bar">
-        <div class="header-container">
+        <div class="header-container header-nav-container">
           <nav class="app-nav-tabs" id="mainNavTabs">
             <button class="nav-tab-btn active" data-tab="dashboard" id="tabBtnDashboard">
               <span>📊</span> Dashboard
@@ -186,40 +186,34 @@
               <span>⚙️</span> Pengaturan
             </button>
           </nav>
+
+          <!-- Top Tools: Filter Periode Global, Cetak & Ekspor -->
+          <div class="header-tools">
+            <!-- Filter Periode Global -->
+            <select id="globalPeriodSelect" class="header-period-select" title="Filter Periode Waktu Pembukuan">
+              <option value="">Semua Periode</option>
+              <option value="2026-08" selected>Bulan Ini (Agustus 2026)</option>
+              <option value="2026-07">Juli 2026</option>
+              <option value="2026-06">Juni 2026</option>
+              <option value="2026">Tahun 2026</option>
+            </select>
+
+            <!-- Cetak Laporan Cepat -->
+            <button class="btn btn-outline btn-sm" id="btnQuickPrintReport" title="Buka Dokumen Cetak Laporan">
+              <span>🖨️</span> Cetak
+            </button>
+
+            <!-- Ekspor Excel -->
+            <button class="btn btn-outline btn-sm" id="btnQuickExportExcel" title="Ekspor Data ke Excel (.xlsx)">
+              <span>📊</span> Ekspor
+            </button>
+          </div>
         </div>
       </div>
     </header>
 
   <!-- ==================== MAIN CONTENT WRAPPER ==================== -->
   <main class="main-wrapper">
-
-    <!-- HERO BANNER CARD -->
-    <section class="hero-card" id="heroCard">
-      <div class="hero-left">
-        <h2 id="heroTitle"><span>📊</span> Dashboard Akuntansi TB. Serba Guna</h2>
-        <p id="heroSubtitle">Sistem pembukuan berpasangan (Double-Entry), persediaan stok, piutang bon & laporan neraca otomatis.</p>
-      </div>
-      <div class="hero-right">
-        <!-- Filter Periode Global -->
-        <select id="globalPeriodSelect" class="custom-select">
-          <option value="">Semua Periode Transaksi</option>
-          <option value="2026-08" selected>Bulan Ini (Agustus 2026)</option>
-          <option value="2026-07">Juli 2026</option>
-          <option value="2026-06">Juni 2026</option>
-          <option value="2026">Tahun 2026</option>
-        </select>
-
-        <!-- Cetak Laporan Cepat -->
-        <button class="btn btn-hero" id="btnQuickPrintReport">
-          <span>🖨️</span> Cetak Laporan
-        </button>
-
-        <!-- Ekspor Excel -->
-        <button class="btn btn-hero" id="btnQuickExportExcel">
-          <span>📊</span> Ekspor Excel
-        </button>
-      </div>
-    </section>
 
     <!-- ==========================================
          VIEW 1: DASHBOARD
