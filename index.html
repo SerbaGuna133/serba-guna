@@ -1016,172 +1016,299 @@
   <!-- 1. MODAL KASIR PENJUALAN MATERIAL (POS - KAS MASUK) -->
   <div class="modal-backdrop" id="modalNewSale">
     <div class="modal-content modal-lg">
-      <div class="modal-header">
+      <div class="modal-header" style="border-bottom: none; padding-bottom: 0.5rem;">
         <div>
-          <h3 class="modal-title">🛒 Kasir Penjualan Material Bangunan (Kas Masuk)</h3>
-          <p class="text-xs text-muted" style="margin: 0.15rem 0 0 0;">Pencatatan penjualan ke pelanggan, otomatis potong stok gudang & cetak struk/faktur</p>
+          <h3 class="modal-title" style="color: var(--success); display: flex; align-items: center; gap: 0.5rem;">
+            <span>🛒</span> Kasir Penjualan Material Bangunan
+          </h3>
+          <p class="text-xs text-muted" style="margin: 0.15rem 0 0 0;">Transaksi kasir penjualan ke pembeli/proyek, potong stok otomatis & cetak nota</p>
         </div>
         <button class="btn-icon-only" onclick="window.app.closeModal('modalNewSale')">✕</button>
       </div>
+
       <form id="formNewSale">
-        <div class="modal-body">
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Tanggal Penjualan:</label>
-              <input type="date" id="saleDate" class="form-control" required />
+        <div class="modal-body" style="padding-top: 0.5rem;">
+          
+          <!-- Top Info Banner -->
+          <div class="pos-banner-top">
+            <div class="d-flex align-center gap-2">
+              <span class="text-xs font-semibold text-muted">No. Nota / Faktur:</span>
+              <span class="pos-badge-id" id="saleInvoiceBadge">FAK-AUTO</span>
             </div>
-
-            <div class="form-group">
-              <label class="form-label">Metode Pembayaran:</label>
-              <select id="salePaymentMethod" class="form-control" required>
-                <option value="cash">💵 Tunai Kasir Langsung (Kas Toko)</option>
-                <option value="transfer">💳 Transfer Bank BCA / QRIS / EDC</option>
-                <option value="piutang">📑 Bon Pelanggan / Piutang Proyek (Bisa DP / Bayar Nanti)</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Nama Pelanggan / Kontraktor Proyek:</label>
-              <input type="text" id="saleCustomerName" class="form-control" placeholder="Contoh: Pak Haji Bambang (Proyek Ruko)" required />
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">No. Telepon / WhatsApp Pelanggan:</label>
-              <input type="text" id="saleCustomerPhone" class="form-control" placeholder="0812-xxxx-xxxx" />
+            <div class="d-flex align-center gap-3 text-xs">
+              <div><span>👤 Operator:</span> <strong id="saleCashierName">Kasir Toko</strong></div>
+              <div><span>📅 Tanggal:</span> <input type="date" id="saleDate" style="border: none; background: transparent; font-weight: 700; color: inherit; cursor: pointer;" required /></div>
             </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">Keterangan / Judul Nota:</label>
-            <input type="text" id="saleTitle" class="form-control" placeholder="Contoh: Penjualan Semen Tonasa 50 Sak + Besi 10 SNI" required />
+          <!-- Customer & Delivery Options -->
+          <div class="form-grid mb-3">
+            <div class="form-group">
+              <label class="form-label">Nama Pembeli / Kontraktor Proyek:</label>
+              <div class="d-flex gap-1 mb-1">
+                <input type="text" id="saleCustomerName" class="form-control" placeholder="Contoh: Pak Haji Bambang" required />
+              </div>
+              <div class="quick-denom-wrap">
+                <button type="button" class="btn-denom" onclick="document.getElementById('saleCustomerName').value='Pelanggan Umum (Cash)'">👤 Pelanggan Umum</button>
+                <button type="button" class="btn-denom" onclick="document.getElementById('saleCustomerName').value='Pak Haji Bambang (Ruko)'">🏢 Proyek Ruko</button>
+                <button type="button" class="btn-denom" onclick="document.getElementById('saleCustomerName').value='Mandor Proyek Perumahan'">🏗️ Mandor Proyek</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">No. Telepon / WhatsApp Pembeli:</label>
+              <input type="text" id="saleCustomerPhone" class="form-control" placeholder="Contoh: 0812-3456-7890 (Untuk Kirim E-Nota)" />
+              <div class="form-group mt-2">
+                <label class="form-label">Keterangan / Judul Nota:</label>
+                <input type="text" id="saleTitle" class="form-control" placeholder="Contoh: Penjualan Material Proyek Tahap 1" required />
+              </div>
+            </div>
           </div>
 
-          <!-- Dynamic Material Items Builder for Sales -->
+          <!-- Opsi Pengiriman Armada -->
+          <div class="delivery-options-grid">
+            <label class="delivery-option-btn active" id="labelDeliveryPickup">
+              <input type="radio" name="saleDeliveryType" value="pickup" checked onchange="window.app.toggleSaleDeliveryOptions('pickup')" />
+              <div>
+                <div class="font-bold text-sm">🏃 Bawa Langsung / Ambil di Toko</div>
+                <div class="text-xs text-muted">Pelanggan membawa barang sendiri</div>
+              </div>
+            </label>
+            <label class="delivery-option-btn" id="labelDeliveryTruck">
+              <input type="radio" name="saleDeliveryType" value="truck" onchange="window.app.toggleSaleDeliveryOptions('truck')" />
+              <div>
+                <div class="font-bold text-sm">🚚 Kirim Armada Toko (Truk / Pickup)</div>
+                <div class="text-xs text-muted">Barang diantar ke lokasi proyek</div>
+              </div>
+            </label>
+          </div>
+
+          <!-- Area Alamat Kirim (Muncul jika pilih Kirim Armada) -->
+          <div class="form-group mb-3" id="groupSaleDeliveryAddress" style="display: none;">
+            <label class="form-label">Alamat Lengkap Pengiriman / Lokasi Proyek & Kontak Mandor:</label>
+            <textarea id="saleDeliveryAddress" class="form-control" rows="2" placeholder="Contoh: Jl. Raya Mawar No. 12, Samping Masjid (Patokan pagar hitam, hubungi Pak Joko di lokasi 0813-xxx)"></textarea>
+          </div>
+
+          <!-- Rincian Barang yang Dijual -->
           <div class="form-group">
             <div class="d-flex align-center justify-between mb-1">
-              <label class="form-label" style="margin-bottom: 0;">Rincian Barang yang Dijual (Otomatis Potong Stok):</label>
+              <label class="form-label font-bold" style="margin-bottom: 0;">🛒 Rincian Material yang Dijual (Otomatis Kurangi Stok):</label>
               <button type="button" class="btn btn-outline btn-sm" id="btnAddSaleItemRow">
-                <span>➕</span> Tambah Baris Barang
+                <span>➕</span> Tambah Baris Material
               </button>
             </div>
             <div class="items-builder-wrap" id="saleItemsBuilderContainer"></div>
           </div>
 
-          <div class="form-grid" style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-            <div class="form-group">
-              <label class="form-label">Total Belanja Pelanggan (Rp):</label>
-              <input type="number" id="saleTotalAmount" class="form-control font-bold text-success" min="0" step="100" placeholder="0" required />
+          <!-- Kasir Checkout & Payment Box -->
+          <div style="background: var(--bg-subtle); padding: 1.25rem; border-radius: var(--radius-md); border: 1.5px solid var(--border-color); margin-top: 1rem;">
+            
+            <div class="d-flex align-center justify-between mb-3" style="border-bottom: 1px dashed var(--border-color); padding-bottom: 0.75rem;">
+              <div>
+                <span class="text-xs font-bold text-muted text-uppercase">TOTAL TAGIHAN KASIR</span>
+                <div style="font-size: 1.6rem; font-weight: 900; color: #059669;" id="saleTotalDisplay">Rp 0</div>
+                <input type="hidden" id="saleTotalAmount" value="0" />
+              </div>
+
+              <div style="min-width: 220px;">
+                <label class="form-label font-semibold">Metode Pembayaran:</label>
+                <select id="salePaymentMethod" class="form-control font-bold" required>
+                  <option value="cash">💵 Tunai Kasir Langsung (Cash)</option>
+                  <option value="transfer">💳 Transfer Bank BCA / QRIS / EDC</option>
+                  <option value="piutang">📑 Bon Pelanggan / Piutang (Bayar Nanti)</option>
+                </select>
+              </div>
             </div>
-            <div class="form-group" id="groupSalePaidAmount">
-              <label class="form-label" id="labelSalePaidAmount">Jumlah Uang Diterima / DP (Rp):</label>
-              <input type="number" id="salePaidAmount" class="form-control font-semibold" min="0" step="100" placeholder="0" />
+
+            <!-- Panel Pembayaran Tunai (Dengan Uang Pas, Denominasi, & Live Kembalian) -->
+            <div id="panelSaleCash">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label">Uang Tunai yang Diterima (Rp):</label>
+                  <input type="number" id="saleCashPaid" class="form-control font-bold" min="0" step="500" placeholder="0" />
+                  <div class="quick-denom-wrap">
+                    <button type="button" class="btn-denom" onclick="window.app.fillSaleExactCash()">💵 Uang Pas</button>
+                    <button type="button" class="btn-denom" onclick="window.app.fillSaleCashDenom(50000)">Rp 50.000</button>
+                    <button type="button" class="btn-denom" onclick="window.app.fillSaleCashDenom(100000)">Rp 100.000</button>
+                    <button type="button" class="btn-denom" onclick="window.app.fillSaleCashDenom(200000)">Rp 200.000</button>
+                    <button type="button" class="btn-denom" onclick="window.app.fillSaleCashDenom(500000)">Rp 500.000</button>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Uang Kembalian Pelanggan:</label>
+                  <div class="change-display-card">
+                    <span class="text-xs font-bold text-muted">KEMBALIAN:</span>
+                    <span class="change-val" id="saleChangeDisplay">Rp 0</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="form-group" id="groupSaleDueDate" style="display: none;">
-              <label class="form-label">Tanggal Jatuh Tempo Bon:</label>
-              <input type="date" id="saleDueDate" class="form-control" />
+
+            <!-- Panel Pembayaran Bon / Piutang -->
+            <div id="panelSaleDebt" style="display: none;">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label">Uang Muka / DP Diterima Saat Ini (Rp):</label>
+                  <input type="number" id="saleDebtDP" class="form-control font-semibold" min="0" step="100" placeholder="0" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Tanggal Jatuh Tempo Pelunasan Bon:</label>
+                  <input type="date" id="saleDueDate" class="form-control" />
+                </div>
+              </div>
+              <div class="d-flex align-center justify-between mt-2 pt-2" style="border-top: 1px dashed var(--border-color);">
+                <span class="font-bold text-danger text-sm">Sisa Tagihan Bon Piutang:</span>
+                <span class="font-bold text-danger" style="font-size: 1.2rem;" id="saleDebtDisplay">Rp 0</span>
+              </div>
             </div>
-            <div class="form-group" id="groupSaleDebtCalc" style="display: none;">
-              <label class="form-label">Sisa Bon Piutang:</label>
-              <div id="saleDebtDisplay" class="font-bold text-danger" style="font-size: 1.1rem; padding-top: 0.35rem;">Rp 0</div>
-            </div>
+
           </div>
 
           <div class="form-group mt-3">
-            <label class="form-label">Catatan Tambahan / Alamat Kirim Armada:</label>
-            <textarea id="saleNotes" class="form-control" rows="2" placeholder="Catatan alamat pengiriman truk, termin proyek, nama mandor, dll..."></textarea>
+            <label class="form-label">Catatan Tambahan untuk Nota:</label>
+            <input type="text" id="saleNotes" class="form-control" placeholder="Contoh: Barang sudah dicek lengkap oleh tukang" />
           </div>
+
         </div>
 
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="window.app.closeModal('modalNewSale')">Batal</button>
-          <button type="submit" class="btn btn-success">💾 Simpan Penjualan & Cetak Nota</button>
+          <button type="submit" class="btn btn-success font-bold" style="padding: 0.6rem 1.5rem;">
+            🖨️ Simpan Transaksi & Cetak Nota (F12)
+          </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- 2. MODAL KULAKAN & PEMBELIAN STOK GUDANG (KAS KELUAR) -->
+  <!-- 2. MODAL KULAKAN & PENERIMAAN STOK GUDANG (KAS KELUAR) -->
   <div class="modal-backdrop" id="modalNewPurchase">
     <div class="modal-content modal-lg">
-      <div class="modal-header">
+      <div class="modal-header" style="border-bottom: none; padding-bottom: 0.5rem;">
         <div>
-          <h3 class="modal-title">📥 Kulakan & Pembelian Stok Masuk (Kas Keluar)</h3>
-          <p class="text-xs text-muted" style="margin: 0.15rem 0 0 0;">Pencatatan pembelian barang dari distributor/pabrik & otomatis menambah stok gudang</p>
+          <h3 class="modal-title" style="color: var(--primary); display: flex; align-items: center; gap: 0.5rem;">
+            <span>📥</span> Penerimaan Barang & Kulakan Stok Gudang
+          </h3>
+          <p class="text-xs text-muted" style="margin: 0.15rem 0 0 0;">Pencatatan barang masuk dari distributor/pabrik & otomatis menambah saldo stok gudang</p>
         </div>
         <button class="btn-icon-only" onclick="window.app.closeModal('modalNewPurchase')">✕</button>
       </div>
+
       <form id="formNewPurchase">
-        <div class="modal-body">
-          <div class="form-grid">
+        <div class="modal-body" style="padding-top: 0.5rem;">
+
+          <!-- Top Info Banner -->
+          <div class="purchase-banner-top">
+            <div class="d-flex align-center gap-2">
+              <span class="text-xs font-semibold text-muted">No. Penerimaan:</span>
+              <span class="pos-badge-id" id="purchaseInvoiceBadge" style="color: var(--primary);">RCV-AUTO</span>
+            </div>
+            <div class="d-flex align-center gap-3 text-xs">
+              <div><span>📦 Gudang Tujuan:</span> <strong>Gudang Utama Toko</strong></div>
+              <div><span>📅 Tgl Masuk:</span> <input type="date" id="purchaseDate" style="border: none; background: transparent; font-weight: 700; color: inherit; cursor: pointer;" required /></div>
+            </div>
+          </div>
+
+          <!-- Supplier & Surat Jalan Information -->
+          <div class="form-grid mb-3">
             <div class="form-group">
-              <label class="form-label">Tanggal Pembelian / Masuk:</label>
-              <input type="date" id="purchaseDate" class="form-control" required />
+              <label class="form-label">Nama Distributor / Pabrik / Supplier:</label>
+              <input type="text" id="purchaseSupplierName" class="form-control" placeholder="Contoh: PT Semen Gresik Distribusi / Pabrik Besi Jaya" required />
+              <div class="quick-denom-wrap">
+                <button type="button" class="btn-denom" onclick="document.getElementById('purchaseSupplierName').value='Distributor Semen Gresik'">🧱 Semen Gresik</button>
+                <button type="button" class="btn-denom" onclick="document.getElementById('purchaseSupplierName').value='Pabrik Besi SNI Perdana'">🏗️ Pabrik Besi</button>
+                <button type="button" class="btn-denom" onclick="document.getElementById('purchaseSupplierName').value='Distributor Cat Avian & Nippon'">🎨 Distributor Cat</button>
+              </div>
             </div>
 
             <div class="form-group">
-              <label class="form-label">Metode Pembayaran ke Supplier:</label>
-              <select id="purchasePaymentMethod" class="form-control" required>
-                <option value="cash">💵 Tunai Kasir (Keluar Kas Toko)</option>
-                <option value="transfer">💳 Transfer Bank BCA (Keluar Rekening Bank)</option>
-                <option value="hutang">🤝 Tempo Distributor / Hutang Dagang (Bayar Nanti / DP)</option>
+              <label class="form-label">No. Surat Jalan / Faktur Resmi Pabrik:</label>
+              <input type="text" id="purchaseInvoiceNo" class="form-control" placeholder="Contoh: SJ-2026/08/019 (Untuk Arsip)" />
+              <div class="form-group mt-2">
+                <label class="form-label">Keterangan Kulakan / Restock:</label>
+                <input type="text" id="purchaseTitle" class="form-control" placeholder="Contoh: Kulakan Stok Awal Pekan Semen & Besi" required />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Lokasi Penyimpanan di Toko / Gudang:</label>
+              <select id="purchaseLocation" class="form-control">
+                <option value="Gudang Utama">🏢 Gudang Utama (Belakang Toko)</option>
+                <option value="Display Depan Toko">🏪 Rak Display Toko Depan</option>
+                <option value="Depo Lapangan Luar">🪵 Depo Lapangan Pasir / Kayu / Bata</option>
               </select>
             </div>
 
             <div class="form-group">
-              <label class="form-label">Nama Supplier / Distributor Pabrik:</label>
-              <input type="text" id="purchaseSupplierName" class="form-control" placeholder="Contoh: Distributor Semen Gresik / Pabrik Besi" required />
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">No. Faktur / Surat Jalan Supplier:</label>
-              <input type="text" id="purchaseInvoiceNo" class="form-control" placeholder="Contoh: SJ-2026/08/019" />
+              <label class="form-label">No. Polisi Truk / Nama Sopir Ekspedisi:</label>
+              <input type="text" id="purchaseTruckNo" class="form-control" placeholder="Contoh: B 9281 UZ (Sopir: Pak Joko)" />
             </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">Keterangan / Judul Kulakan:</label>
-            <input type="text" id="purchaseTitle" class="form-control" placeholder="Contoh: Kulakan Semen Gresik 100 Sak + Besi 10 SNI 50 Btg" required />
-          </div>
-
-          <!-- Dynamic Material Items Builder for Purchases -->
+          <!-- Rincian Barang Masuk -->
           <div class="form-group">
             <div class="d-flex align-center justify-between mb-1">
-              <label class="form-label" style="margin-bottom: 0;">Rincian Barang yang Masuk (Otomatis Tambah Stok):</label>
+              <label class="form-label font-bold" style="margin-bottom: 0;">📥 Rincian Barang yang Masuk (Otomatis Tambah Stok Gudang):</label>
               <button type="button" class="btn btn-outline btn-sm" id="btnAddPurchaseItemRow">
-                <span>➕</span> Tambah Baris Barang
+                <span>➕</span> Tambah Baris Barang Masuk
               </button>
             </div>
             <div class="items-builder-wrap" id="purchaseItemsBuilderContainer"></div>
           </div>
 
-          <div class="form-grid" style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-            <div class="form-group">
-              <label class="form-label">Total Tagihan Pembelian (Rp):</label>
-              <input type="number" id="purchaseTotalAmount" class="form-control font-bold text-danger" min="0" step="100" placeholder="0" required />
+          <!-- Rekap Tagihan & Syarat Pembayaran Distributor -->
+          <div style="background: var(--bg-subtle); padding: 1.25rem; border-radius: var(--radius-md); border: 1.5px solid var(--border-color); margin-top: 1rem;">
+            
+            <div class="d-flex align-center justify-between mb-3" style="border-bottom: 1px dashed var(--border-color); padding-bottom: 0.75rem;">
+              <div>
+                <span class="text-xs font-bold text-muted text-uppercase">TOTAL TAGIHAN SUPPLIER</span>
+                <div style="font-size: 1.6rem; font-weight: 900; color: var(--danger);" id="purchaseTotalDisplay">Rp 0</div>
+                <input type="hidden" id="purchaseTotalAmount" value="0" />
+              </div>
+
+              <div style="min-width: 220px;">
+                <label class="form-label font-semibold">Syarat Pembayaran:</label>
+                <select id="purchasePaymentMethod" class="form-control font-bold" required>
+                  <option value="cash">💵 Tunai Kasir Toko (Keluar Kas Toko)</option>
+                  <option value="transfer">💳 Transfer Rekening BCA (Keluar Bank)</option>
+                  <option value="hutang">🤝 Hutang Tempo Distributor (Bayar Nanti / DP)</option>
+                </select>
+              </div>
             </div>
-            <div class="form-group" id="groupPurchasePaidAmount">
-              <label class="form-label" id="labelPurchasePaidAmount">Jumlah Dibayar / DP ke Supplier (Rp):</label>
-              <input type="number" id="purchasePaidAmount" class="form-control font-semibold" min="0" step="100" placeholder="0" />
+
+            <!-- Panel Pembayaran Hutang Tempo Distributor -->
+            <div id="panelPurchaseDebt" style="display: none;">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label">Uang Muka / DP yang Dibayar ke Supplier Saat Ini (Rp):</label>
+                  <input type="number" id="purchasePaidAmount" class="form-control font-semibold" min="0" step="100" placeholder="0" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Jatuh Tempo Pembayaran ke Pabrik (Termin TOP):</label>
+                  <input type="date" id="purchaseDueDate" class="form-control" />
+                </div>
+              </div>
+              <div class="d-flex align-center justify-between mt-2 pt-2" style="border-top: 1px dashed var(--border-color);">
+                <span class="font-bold text-danger text-sm">Sisa Hutang Usaha ke Distributor:</span>
+                <span class="font-bold text-danger" style="font-size: 1.2rem;" id="purchaseDebtDisplay">Rp 0</span>
+              </div>
             </div>
-            <div class="form-group" id="groupPurchaseDueDate" style="display: none;">
-              <label class="form-label">Tanggal Jatuh Tempo Hutang:</label>
-              <input type="date" id="purchaseDueDate" class="form-control" />
-            </div>
-            <div class="form-group" id="groupPurchaseDebtCalc" style="display: none;">
-              <label class="form-label">Sisa Hutang ke Distributor:</label>
-              <div id="purchaseDebtDisplay" class="font-bold text-danger" style="font-size: 1.1rem; padding-top: 0.35rem;">Rp 0</div>
-            </div>
+
           </div>
 
           <div class="form-group mt-3">
-            <label class="form-label">Catatan Tambahan / No. Polisi Truk Pengirim:</label>
-            <textarea id="purchaseNotes" class="form-control" rows="2" placeholder="Catatan no polisi truk distributor, syarat retur, nama sopir pengirim, dll..."></textarea>
+            <label class="form-label">Catatan Penerimaan / Syarat Retur Pabrik:</label>
+            <textarea id="purchaseNotes" class="form-control" rows="2" placeholder="Catatan kondisi sak utuh, surat jalan asli sudah ditandatangani mandor gudang, dll..."></textarea>
           </div>
+
         </div>
 
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="window.app.closeModal('modalNewPurchase')">Batal</button>
-          <button type="submit" class="btn btn-primary">📥 Simpan & Tambah ke Stok Gudang</button>
+          <button type="submit" class="btn btn-primary font-bold" style="padding: 0.6rem 1.5rem;">
+            📥 Masukkan ke Stok Gudang & Catat Pembelian
+          </button>
         </div>
       </form>
     </div>

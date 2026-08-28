@@ -1180,8 +1180,24 @@ class AppController {
     const form = document.getElementById('formNewSale');
     if (form) form.reset();
 
+    const invBadge = document.getElementById('saleInvoiceBadge');
+    if (invBadge) {
+      const now = new Date();
+      const ymd = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+      const rand = Math.floor(1000 + Math.random() * 9000);
+      invBadge.textContent = `FAK-${ymd}-${rand}`;
+    }
+
+    const cashierEl = document.getElementById('saleCashierName');
+    if (cashierEl) cashierEl.textContent = this.auth?.currentUser?.name || 'Kasir Toko';
+
     const dateInput = document.getElementById('saleDate');
     if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+
+    const customerInput = document.getElementById('saleCustomerName');
+    if (customerInput) customerInput.value = 'Pelanggan Umum (Cash)';
+
+    this.toggleSaleDeliveryOptions('pickup');
 
     const container = document.getElementById('saleItemsBuilderContainer');
     if (container) container.innerHTML = '';
@@ -1189,6 +1205,39 @@ class AppController {
 
     this.handleSalePaymentMethodChange();
     this.openModal('modalNewSale');
+  }
+
+  toggleSaleDeliveryOptions(type = 'pickup') {
+    const addressGroup = document.getElementById('groupSaleDeliveryAddress');
+    const labelPickup = document.getElementById('labelDeliveryPickup');
+    const labelTruck = document.getElementById('labelDeliveryTruck');
+
+    if (type === 'truck') {
+      if (addressGroup) addressGroup.style.display = 'block';
+      if (labelTruck) labelTruck.classList.add('active');
+      if (labelPickup) labelPickup.classList.remove('active');
+    } else {
+      if (addressGroup) addressGroup.style.display = 'none';
+      if (labelPickup) labelPickup.classList.add('active');
+      if (labelTruck) labelTruck.classList.remove('active');
+    }
+  }
+
+  fillSaleExactCash() {
+    const total = parseFloat(document.getElementById('saleTotalAmount')?.value) || 0;
+    const cashInput = document.getElementById('saleCashPaid');
+    if (cashInput) {
+      cashInput.value = total;
+      this.handleSaleAmountChange();
+    }
+  }
+
+  fillSaleCashDenom(nominal) {
+    const cashInput = document.getElementById('saleCashPaid');
+    if (cashInput) {
+      cashInput.value = nominal;
+      this.handleSaleAmountChange();
+    }
   }
 
   addSaleItemRow(name = '', qty = 1, unit = 'Pcs', price = 0, productId = '', unitRatio = 1) {
@@ -1256,7 +1305,6 @@ class AppController {
       const ratio = parseFloat(row.querySelector('.item-unit-ratio')?.value) || 1;
       const requiredBase = currentQty * ratio;
 
-      // Badge info stok
       if (prod.stock <= 0) {
         stockBadge.innerHTML = `<span class="text-danger font-bold">❌ Stok Habis (0 ${prod.unit})</span>`;
       } else if (prod.hasMultiUnit && prod.packRatio > 1) {
@@ -1265,7 +1313,6 @@ class AppController {
         stockBadge.innerHTML = `<span class="text-success font-semibold">📦 Sisa: <strong>${prod.stock} ${prod.unit}</strong></span>`;
       }
 
-      // Validasi batas stok saat penjualan kasir
       if (requiredBase > prod.stock) {
         qtyInput.classList.add('stock-exceeded');
         if (qtyWarning) {
@@ -1377,23 +1424,23 @@ class AppController {
       total += (qty * price);
     });
 
-    if (total > 0) {
-      const elTotal = document.getElementById('saleTotalAmount');
-      if (elTotal) elTotal.value = total;
-      this.handleSaleAmountChange();
-    }
+    const elTotal = document.getElementById('saleTotalAmount');
+    if (elTotal) elTotal.value = total;
+
+    const elDisplay = document.getElementById('saleTotalDisplay');
+    if (elDisplay) elDisplay.textContent = this.store.formatRupiah(total);
+
+    this.handleSaleAmountChange();
   }
 
   handleSalePaymentMethodChange() {
     const method = document.getElementById('salePaymentMethod')?.value || 'cash';
-    const groupDueDate = document.getElementById('groupSaleDueDate');
-    const groupDebtCalc = document.getElementById('groupSaleDebtCalc');
-    const labelPaidAmount = document.getElementById('labelSalePaidAmount');
+    const panelCash = document.getElementById('panelSaleCash');
+    const panelDebt = document.getElementById('panelSaleDebt');
 
     if (method === 'piutang') {
-      if (groupDueDate) groupDueDate.style.display = 'block';
-      if (groupDebtCalc) groupDebtCalc.style.display = 'block';
-      if (labelPaidAmount) labelPaidAmount.textContent = 'Uang Muka / DP yang Diterima (Rp):';
+      if (panelCash) panelCash.style.display = 'none';
+      if (panelDebt) panelDebt.style.display = 'block';
       const dueInput = document.getElementById('saleDueDate');
       if (dueInput && !dueInput.value) {
         const d = new Date();
@@ -1401,9 +1448,15 @@ class AppController {
         dueInput.value = d.toISOString().split('T')[0];
       }
     } else {
-      if (groupDueDate) groupDueDate.style.display = 'none';
-      if (groupDebtCalc) groupDebtCalc.style.display = 'none';
-      if (labelPaidAmount) labelPaidAmount.textContent = 'Jumlah Uang Diterima / Lunas (Rp):';
+      if (panelCash) panelCash.style.display = 'block';
+      if (panelDebt) panelDebt.style.display = 'none';
+
+      // Auto-set exact cash for transfer or cash
+      const total = parseFloat(document.getElementById('saleTotalAmount')?.value) || 0;
+      const cashInput = document.getElementById('saleCashPaid');
+      if (cashInput && (!cashInput.value || parseFloat(cashInput.value) === 0)) {
+        cashInput.value = total;
+      }
     }
 
     this.handleSaleAmountChange();
@@ -1412,25 +1465,38 @@ class AppController {
   handleSaleAmountChange() {
     const totalAmount = parseFloat(document.getElementById('saleTotalAmount')?.value) || 0;
     const method = document.getElementById('salePaymentMethod')?.value || 'cash';
-    const paidInput = document.getElementById('salePaidAmount');
 
-    if (method === 'cash' || method === 'transfer') {
-      if (paidInput) paidInput.value = totalAmount;
-    }
-
-    const paidAmount = parseFloat(paidInput?.value) || 0;
-    const debt = Math.max(0, totalAmount - paidAmount);
-    const displayEl = document.getElementById('saleDebtDisplay');
-    if (displayEl) {
-      displayEl.textContent = this.store.formatRupiah(debt);
+    if (method === 'piutang') {
+      const dp = parseFloat(document.getElementById('saleDebtDP')?.value) || 0;
+      const debt = Math.max(0, totalAmount - dp);
+      const debtEl = document.getElementById('saleDebtDisplay');
+      if (debtEl) debtEl.textContent = this.store.formatRupiah(debt);
+    } else {
+      const cashPaid = parseFloat(document.getElementById('saleCashPaid')?.value) || 0;
+      const change = Math.max(0, cashPaid - totalAmount);
+      const changeEl = document.getElementById('saleChangeDisplay');
+      if (changeEl) {
+        changeEl.textContent = this.store.formatRupiah(change);
+        if (cashPaid < totalAmount && cashPaid > 0) {
+          changeEl.innerHTML = `<span class="text-danger">Kurang ${this.store.formatRupiah(totalAmount - cashPaid)}</span>`;
+        }
+      }
     }
   }
 
-  // 2. MODAL KULAKAN & PEMBELIAN STOK MASUK
+  // 2. MODAL KULAKAN & PENERIMAAN STOK GUDANG (KAS KELUAR)
   openNewPurchaseModal(prefilledProductId = null) {
     this.editingTxId = null;
     const form = document.getElementById('formNewPurchase');
     if (form) form.reset();
+
+    const badge = document.getElementById('purchaseInvoiceBadge');
+    if (badge) {
+      const now = new Date();
+      const ymd = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+      const rand = Math.floor(1000 + Math.random() * 9000);
+      badge.textContent = `RCV-${ymd}-${rand}`;
+    }
 
     const dateInput = document.getElementById('purchaseDate');
     if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
@@ -1494,7 +1560,7 @@ class AppController {
         <input type="number" class="form-control item-qty" placeholder="Qty Masuk" value="${qty}" min="0.1" step="any" required />
       </div>
       <div class="item-unit-wrapper">${unitControlHTML}</div>
-      <input type="number" class="form-control item-price" placeholder="Harga Beli / Modal (Rp)" value="${price}" min="0" step="100" required />
+      <input type="number" class="form-control item-price" placeholder="Harga Beli Pabrik (Rp)" value="${price}" min="0" step="100" required />
       <button type="button" class="btn-icon-only text-danger btn-remove-item" title="Hapus Baris" style="margin-top: 5px;">✕</button>
     `;
 
@@ -1507,7 +1573,7 @@ class AppController {
         stockBadge.innerHTML = '';
         return;
       }
-      stockBadge.innerHTML = `<span class="text-muted">📦 Stok Saat Ini: <strong>${prod.stock} ${prod.unit}</strong></span>`;
+      stockBadge.innerHTML = `<span class="text-muted font-semibold">📦 Stok Lama: <strong>${prod.stock} ${prod.unit}</strong></span>`;
     };
 
     const updateUnitControl = (prod) => {
@@ -1594,23 +1660,21 @@ class AppController {
       total += (qty * price);
     });
 
-    if (total > 0) {
-      const elTotal = document.getElementById('purchaseTotalAmount');
-      if (elTotal) elTotal.value = total;
-      this.handlePurchaseAmountChange();
-    }
+    const elTotal = document.getElementById('purchaseTotalAmount');
+    if (elTotal) elTotal.value = total;
+
+    const elDisplay = document.getElementById('purchaseTotalDisplay');
+    if (elDisplay) elDisplay.textContent = this.store.formatRupiah(total);
+
+    this.handlePurchaseAmountChange();
   }
 
   handlePurchasePaymentMethodChange() {
     const method = document.getElementById('purchasePaymentMethod')?.value || 'cash';
-    const groupDueDate = document.getElementById('groupPurchaseDueDate');
-    const groupDebtCalc = document.getElementById('groupPurchaseDebtCalc');
-    const labelPaidAmount = document.getElementById('labelPurchasePaidAmount');
+    const panelDebt = document.getElementById('panelPurchaseDebt');
 
     if (method === 'hutang') {
-      if (groupDueDate) groupDueDate.style.display = 'block';
-      if (groupDebtCalc) groupDebtCalc.style.display = 'block';
-      if (labelPaidAmount) labelPaidAmount.textContent = 'Uang Muka / DP ke Supplier (Rp):';
+      if (panelDebt) panelDebt.style.display = 'block';
       const dueInput = document.getElementById('purchaseDueDate');
       if (dueInput && !dueInput.value) {
         const d = new Date();
@@ -1618,9 +1682,7 @@ class AppController {
         dueInput.value = d.toISOString().split('T')[0];
       }
     } else {
-      if (groupDueDate) groupDueDate.style.display = 'none';
-      if (groupDebtCalc) groupDebtCalc.style.display = 'none';
-      if (labelPaidAmount) labelPaidAmount.textContent = 'Jumlah Dibayar ke Supplier (Rp):';
+      if (panelDebt) panelDebt.style.display = 'none';
     }
 
     this.handlePurchaseAmountChange();
@@ -1629,17 +1691,12 @@ class AppController {
   handlePurchaseAmountChange() {
     const totalAmount = parseFloat(document.getElementById('purchaseTotalAmount')?.value) || 0;
     const method = document.getElementById('purchasePaymentMethod')?.value || 'cash';
-    const paidInput = document.getElementById('purchasePaidAmount');
 
-    if (method === 'cash' || method === 'transfer') {
-      if (paidInput) paidInput.value = totalAmount;
-    }
-
-    const paidAmount = parseFloat(paidInput?.value) || 0;
-    const debt = Math.max(0, totalAmount - paidAmount);
-    const displayEl = document.getElementById('purchaseDebtDisplay');
-    if (displayEl) {
-      displayEl.textContent = this.store.formatRupiah(debt);
+    if (method === 'hutang') {
+      const dp = parseFloat(document.getElementById('purchasePaidAmount')?.value) || 0;
+      const debt = Math.max(0, totalAmount - dp);
+      const debtEl = document.getElementById('purchaseDebtDisplay');
+      if (debtEl) debtEl.textContent = this.store.formatRupiah(debt);
     }
   }
 
@@ -2134,8 +2191,8 @@ class AppController {
     // Sales Form Events
     document.getElementById('btnAddSaleItemRow')?.addEventListener('click', () => this.addSaleItemRow());
     document.getElementById('salePaymentMethod')?.addEventListener('change', () => this.handleSalePaymentMethodChange());
-    document.getElementById('saleTotalAmount')?.addEventListener('input', () => this.handleSaleAmountChange());
-    document.getElementById('salePaidAmount')?.addEventListener('input', () => this.handleSaleAmountChange());
+    document.getElementById('saleCashPaid')?.addEventListener('input', () => this.handleSaleAmountChange());
+    document.getElementById('saleDebtDP')?.addEventListener('input', () => this.handleSaleAmountChange());
     document.getElementById('formNewSale')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       await this.handleSaveSale();
@@ -2144,7 +2201,6 @@ class AppController {
     // Purchase / Restock Form Events
     document.getElementById('btnAddPurchaseItemRow')?.addEventListener('click', () => this.addPurchaseItemRow());
     document.getElementById('purchasePaymentMethod')?.addEventListener('change', () => this.handlePurchasePaymentMethodChange());
-    document.getElementById('purchaseTotalAmount')?.addEventListener('input', () => this.handlePurchaseAmountChange());
     document.getElementById('purchasePaidAmount')?.addEventListener('input', () => this.handlePurchaseAmountChange());
     document.getElementById('formNewPurchase')?.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -2287,21 +2343,35 @@ class AppController {
       return;
     }
 
+    const totalAmount = parseFloat(document.getElementById('saleTotalAmount')?.value) || 0;
+    const method = document.getElementById('salePaymentMethod')?.value || 'cash';
+    let paidAmount = totalAmount;
+
+    if (method === 'piutang') {
+      paidAmount = parseFloat(document.getElementById('saleDebtDP')?.value) || 0;
+    } else {
+      paidAmount = totalAmount;
+    }
+
     const primaryCategory = (items[0] && items[0].id) ? (this.inventory?.products.find(p => p.id === items[0].id)?.category || 'lainnya') : 'lainnya';
+
+    const deliveryAddress = document.getElementById('saleDeliveryAddress')?.value.trim() || '';
+    const userNotes = document.getElementById('saleNotes')?.value.trim() || '';
+    const fullNotes = deliveryAddress ? `[Alamat Kirim: ${deliveryAddress}] ${userNotes}` : userNotes;
 
     const txData = {
       type: 'in',
-      paymentMethod: document.getElementById('salePaymentMethod')?.value || 'cash',
+      paymentMethod: method,
       category: primaryCategory,
       date: document.getElementById('saleDate')?.value || new Date().toISOString().split('T')[0],
       title: document.getElementById('saleTitle')?.value.trim() || `Penjualan ${items[0]?.name}`,
       customer: document.getElementById('saleCustomerName')?.value.trim() || 'Pelanggan Umum',
       supplier: '',
       phone: document.getElementById('saleCustomerPhone')?.value.trim() || '',
-      amount: parseFloat(document.getElementById('saleTotalAmount')?.value) || 0,
-      paidAmount: parseFloat(document.getElementById('salePaidAmount')?.value) || 0,
+      amount: totalAmount,
+      paidAmount: paidAmount,
       dueDate: document.getElementById('saleDueDate')?.value || '',
-      notes: document.getElementById('saleNotes')?.value.trim() || '',
+      notes: fullNotes,
       items: items
     };
 
@@ -2342,21 +2412,38 @@ class AppController {
       return;
     }
 
+    const totalAmount = parseFloat(document.getElementById('purchaseTotalAmount')?.value) || 0;
+    const method = document.getElementById('purchasePaymentMethod')?.value || 'cash';
+    let paidAmount = totalAmount;
+
+    if (method === 'hutang') {
+      paidAmount = parseFloat(document.getElementById('purchasePaidAmount')?.value) || 0;
+    } else {
+      paidAmount = totalAmount;
+    }
+
     const primaryCategory = (items[0] && items[0].id) ? (this.inventory?.products.find(p => p.id === items[0].id)?.category || 'lainnya') : 'lainnya';
+
+    const location = document.getElementById('purchaseLocation')?.value || 'Gudang Utama';
+    const truckNo = document.getElementById('purchaseTruckNo')?.value.trim() || '';
+    const userNotes = document.getElementById('purchaseNotes')?.value.trim() || '';
+    let combinedNotes = `[Lokasi: ${location}]`;
+    if (truckNo) combinedNotes += ` [Armada: ${truckNo}]`;
+    if (userNotes) combinedNotes += ` ${userNotes}`;
 
     const txData = {
       type: 'out',
-      paymentMethod: document.getElementById('purchasePaymentMethod')?.value || 'cash',
+      paymentMethod: method,
       category: primaryCategory,
       date: document.getElementById('purchaseDate')?.value || new Date().toISOString().split('T')[0],
       title: document.getElementById('purchaseTitle')?.value.trim() || `Kulakan ${items[0]?.name}`,
       customer: '',
       supplier: document.getElementById('purchaseSupplierName')?.value.trim() || 'Distributor Pabrik',
       phone: document.getElementById('purchaseInvoiceNo')?.value.trim() || '',
-      amount: parseFloat(document.getElementById('purchaseTotalAmount')?.value) || 0,
-      paidAmount: parseFloat(document.getElementById('purchasePaidAmount')?.value) || 0,
+      amount: totalAmount,
+      paidAmount: paidAmount,
       dueDate: document.getElementById('purchaseDueDate')?.value || '',
-      notes: document.getElementById('purchaseNotes')?.value.trim() || '',
+      notes: combinedNotes,
       items: items
     };
 
