@@ -1257,7 +1257,40 @@ class AppController {
     }
   }
 
-  // 5. Cetak Nota / Faktur
+  // 5. Modal Bayar Cicilan Piutang / Hutang
+  openRepaymentModal(txId) {
+    const tx = this.store.transactions.find(t => t.id === txId);
+    if (!tx) {
+      this.showToast("Data tagihan bon/hutang tidak ditemukan.", "danger");
+      return;
+    }
+
+    const form = document.getElementById('formRepayment');
+    if (form) form.reset();
+
+    const isCustomer = tx.type === 'in';
+    const contactName = isCustomer ? (tx.customer || 'Pelanggan Bon') : (tx.supplier || 'Distributor');
+
+    document.getElementById('modalRepayTitle').textContent = isCustomer 
+      ? `💵 Catat Pembayaran Cicilan Bon Pelanggan`
+      : `🤝 Catat Pembayaran Hutang Supplier / Pabrik`;
+
+    document.getElementById('repayTxId').value = tx.id;
+    document.getElementById('repayTxCustomer').textContent = `${isCustomer ? '👤 Pelanggan: ' : '🏭 Supplier: '} ${contactName}`;
+    document.getElementById('repayTxTitle').textContent = `Nota #${tx.id}: ${tx.title}`;
+    document.getElementById('repayTxDebtDisplay').textContent = this.store.formatRupiah(tx.debtAmount);
+
+    const amountInput = document.getElementById('repayAmount');
+    amountInput.value = tx.debtAmount;
+    amountInput.max = tx.debtAmount;
+
+    document.getElementById('repayDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('repayNote').value = `Pelunasan cicilan: ${tx.title}`;
+
+    this.openModal('modalRepayment');
+  }
+
+  // 6. Cetak Nota / Faktur
   openReceiptModal(txId) {
     const html = this.export.generateOfficialInvoiceHTML(txId);
     document.getElementById('receiptPreviewContent').innerHTML = html;
