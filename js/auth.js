@@ -92,6 +92,21 @@ class AuthManager {
     }
   }
 
+  ensureFirebaseInitialized() {
+    if (typeof firebase === 'undefined') return false;
+    if (!firebase.apps.length) {
+      const config = (window.firebaseService && window.firebaseService.config) ? window.firebaseService.config : (typeof DEFAULT_FIREBASE_CONFIG !== 'undefined' ? DEFAULT_FIREBASE_CONFIG : null);
+      if (config && config.apiKey) {
+        try {
+          firebase.initializeApp(config);
+        } catch (e) {
+          console.warn("Inisialisasi Firebase Auth gagal:", e);
+        }
+      }
+    }
+    return firebase.apps.length > 0;
+  }
+
   async login(username, password, rememberMe = true) {
     if (!username || !password) {
       throw new Error("Username/Email dan Password wajib diisi.");
@@ -101,14 +116,16 @@ class AuthManager {
     const isEmailFormat = cleanInput.includes('@');
     const emailToUse = isEmailFormat ? cleanInput : `${cleanInput}@serbaguna.com`;
 
+    this.ensureFirebaseInitialized();
+
     // 1. Coba Autentikasi Cloud Firebase jika SDK tersedia
-    if (typeof firebase !== 'undefined' && firebase.auth) {
+    if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
       try {
         const userCredential = await firebase.auth().signInWithEmailAndPassword(emailToUse, password.trim());
         const fbUser = userCredential.user;
 
         const role = (cleanInput === 'admin' || emailToUse.startsWith('admin') || emailToUse.startsWith('owner')) ? 'owner' : 'kasir';
-        const name = role === 'owner' ? 'Hazel Hudaya (Owner)' : (fbUser.displayName || 'Kasir Toko');
+        const name = role === 'owner' ? 'Hazel Hudaya (Owner)' : (fbUser.displayName || fbUser.email.split('@')[0]);
 
         this.currentUser = {
           id: fbUser.uid,
@@ -131,8 +148,26 @@ class AuthManager {
 
         return this.currentUser;
       } catch (fbErr) {
-        console.warn("Firebase auth info:", fbErr.code, fbErr.message);
-        // Jika error bukan karena offline, tapi akun ada di local, lanjut ke verifikasi lokal
+        console.warn("Firebase auth error code:", fbErr.code, fbErr.message);
+
+        // Jika pengguna memasukkan format email (berarti memang akun Firebase), tampilkan error Firebase yang jelas!
+        if (isEmailFormat) {
+          let errorMsg = fbErr.message;
+          if (fbErr.code === 'auth/user-not-found') {
+            errorMsg = `Email "${emailToUse}" belum terdaftar di menu Users Firebase.`;
+          } else if (fbErr.code === 'auth/wrong-password' || fbErr.code === 'auth/invalid-credential') {
+            errorMsg = "Password yang Anda masukkan salah. Pastikan password sesuai dengan saat dibuat di Firebase.";
+          } else if (fbErr.code === 'auth/operation-not-allowed') {
+            errorMsg = "Metode Email/Password belum diaktifkan (Enable) di Firebase Console > Authentication > Sign-in method.";
+          } else if (fbErr.code === 'auth/invalid-email') {
+            errorMsg = "Format alamat email tidak valid.";
+          } else if (fbErr.code === 'auth/too-many-requests') {
+            errorMsg = "Terlalu banyak percobaan login gagal. Silakan tunggu beberapa saat.";
+          } else if (fbErr.code === 'auth/network-request-failed') {
+            errorMsg = "Koneksi internet bermasalah. Periksa jaringan Anda.";
+          }
+          throw new Error(`Firebase Auth: ${errorMsg}`);
+        }
       }
     }
 
@@ -140,7 +175,7 @@ class AuthManager {
     const user = this.users.find(u => u.username.toLowerCase() === cleanInput || (u.email && u.email.toLowerCase() === cleanInput));
 
     if (!user) {
-      throw new Error("Akun tidak ditemukan. Masukkan username 'admin' atau 'kasir'.");
+      throw new Error("Akun tidak ditemukan. Gunakan email Firebase Anda yang lengkap (misal: nama@gmail.com) atau username 'admin' / 'kasir'.");
     }
 
     if (user.password !== password.trim()) {
