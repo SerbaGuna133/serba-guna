@@ -372,11 +372,21 @@ class AppController {
     const stats = this.store.getFinancialStats(this.selectedPeriod);
     const invVal = this.inventory ? this.inventory.getValuation() : { totalAssetValue: 0, lowStockCount: 0 };
 
-    document.getElementById('kpiNetCash').textContent = this.store.formatRupiah(stats.netCash);
+    const elCash = document.getElementById('kpiNetCash');
+    if (elCash) {
+      elCash.textContent = this.store.formatRupiah(stats.netCash);
+      elCash.className = `stat-value ${stats.netCash < 0 ? 'text-danger' : 'text-success'}`;
+    }
+
     document.getElementById('kpiRevenue').textContent = this.store.formatRupiah(stats.totalRevenue);
     document.getElementById('kpiInventoryVal').textContent = this.store.formatRupiah(invVal.totalAssetValue);
     document.getElementById('kpiLowStockAlert').textContent = `${invVal.lowStockCount} item stok menipis (⚠️ Low Stock)`;
-    document.getElementById('kpiNetProfit').textContent = this.store.formatRupiah(stats.netProfit);
+
+    const elProfit = document.getElementById('kpiNetProfit');
+    if (elProfit) {
+      elProfit.textContent = this.store.formatRupiah(stats.netProfit);
+      elProfit.className = `stat-value ${stats.netProfit < 0 ? 'text-danger' : 'text-success'}`;
+    }
     document.getElementById('kpiProfitMargin').textContent = `${stats.profitMargin}%`;
     document.getElementById('kpiReceivables').textContent = this.store.formatRupiah(stats.totalReceivables);
     document.getElementById('kpiPayables').textContent = this.store.formatRupiah(stats.totalPayables);

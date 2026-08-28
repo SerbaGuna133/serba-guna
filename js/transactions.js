@@ -276,7 +276,8 @@ class TransactionStore {
 
     let totalRevenue = 0;
     let totalCashIn = 0;
-    let totalExpense = 0;
+    let totalStockPurchase = 0;
+    let totalOperatingExpense = 0;
     let totalCashOut = 0;
     let totalReceivables = 0;
     let totalPayables = 0;
@@ -300,29 +301,59 @@ class TransactionStore {
 
     list.forEach(tx => {
       if (tx.type === 'in') {
-        totalRevenue += tx.amount;
-        totalCashIn += (tx.paidAmount || 0);
-        totalCOGS += (tx.cogs || 0);
+        totalRevenue += (Number(tx.amount) || 0);
+        totalCashIn += (Number(tx.paidAmount) || 0);
+        totalCOGS += (Number(tx.cogs) || 0);
       } else if (tx.type === 'out') {
-        totalExpense += tx.amount;
-        totalCashOut += (tx.paidAmount || 0);
+        const amt = Number(tx.amount) || 0;
+        const paid = Number(tx.paidAmount) || 0;
+        totalCashOut += paid;
+
+        // Pisahkan antara Kulakan Stok (Masuk ke Aset Persediaan) vs Beban Operasional Murni
+        if (['operasional', 'armada', 'beban_lain'].includes(tx.category)) {
+          totalOperatingExpense += amt;
+        } else {
+          totalStockPurchase += amt;
+        }
       }
     });
 
-    const netCash = totalCashIn - totalCashOut;
+    // Perhitungan Laba Bersih Akuntansi yang Benar:
+    // Laba Bersih = Omset Penjualan - HPP Barang Terjual - Beban Operasional
+    let accountingNetProfit = totalRevenue - totalCOGS - totalOperatingExpense;
+    let cashBalance = totalCashIn - totalCashOut;
+
+    // Sinkronisasi dengan Buku Besar Akuntansi jika ada Saldo Awal Kas / Modal
+    if (window.accountingEngine) {
+      try {
+        const ledger = window.accountingEngine.getGeneralLedger(period);
+        const kasAcc = ledger['1101'];
+        const bankAcc = ledger['1102'];
+        if (kasAcc || bankAcc) {
+          cashBalance = (kasAcc ? kasAcc.endingBalance : 0) + (bankAcc ? bankAcc.endingBalance : 0);
+        }
+        const inc = window.accountingEngine.getIncomeStatement(period);
+        if (inc && typeof inc.netProfit === 'number') {
+          accountingNetProfit = inc.netProfit;
+        }
+      } catch (e) {
+        console.warn("Gagal sinkron accounting engine ke stats:", e);
+      }
+    }
+
     const grossProfit = totalRevenue - totalCOGS;
-    const netProfit = totalRevenue - totalExpense;
-    const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : 0;
+    const profitMargin = totalRevenue > 0 ? ((accountingNetProfit / totalRevenue) * 100).toFixed(1) : 0;
 
     return {
       totalRevenue,
       totalCashIn,
-      totalExpense,
+      totalStockPurchase,
+      totalOperatingExpense,
       totalCashOut,
-      netCash,
+      netCash: cashBalance,
       totalCOGS,
       grossProfit,
-      netProfit,
+      netProfit: accountingNetProfit,
       profitMargin,
       totalReceivables,
       totalPayables,
