@@ -1427,11 +1427,61 @@ class AppController {
     this.openModal('modalRepayment');
   }
 
-  // 6. Cetak Nota / Faktur
-  openReceiptModal(txId) {
-    const html = this.export.generateOfficialInvoiceHTML(txId);
-    document.getElementById('receiptPreviewContent').innerHTML = html;
+  // 6. Cetak Nota / Struk Thermal POS & Faktur
+  openReceiptModal(txId, format = 'thermal-80') {
+    this.currentReceiptTxId = txId;
+    this.currentReceiptFormat = format;
+    this.renderReceiptPreview();
     this.openModal('modalReceiptPreview');
+  }
+
+  switchReceiptFormat(format) {
+    this.currentReceiptFormat = format;
+    this.renderReceiptPreview();
+  }
+
+  renderReceiptPreview() {
+    if (!this.currentReceiptTxId) return;
+
+    ['btnFormatThermal80', 'btnFormatThermal58', 'btnFormatA4'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) {
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-outline');
+      }
+    });
+
+    let html = '';
+    if (this.currentReceiptFormat === 'thermal-58') {
+      const btn = document.getElementById('btnFormatThermal58');
+      if (btn) { btn.classList.add('btn-primary'); btn.classList.remove('btn-outline'); }
+      html = this.export.generateThermalReceiptHTML(this.currentReceiptTxId, '58mm');
+    } else if (this.currentReceiptFormat === 'a4') {
+      const btn = document.getElementById('btnFormatA4');
+      if (btn) { btn.classList.add('btn-primary'); btn.classList.remove('btn-outline'); }
+      html = this.export.generateOfficialInvoiceHTML(this.currentReceiptTxId);
+    } else {
+      const btn = document.getElementById('btnFormatThermal80');
+      if (btn) { btn.classList.add('btn-primary'); btn.classList.remove('btn-outline'); }
+      html = this.export.generateThermalReceiptHTML(this.currentReceiptTxId, '80mm');
+    }
+
+    const container = document.getElementById('receiptPreviewContent');
+    if (container) container.innerHTML = html;
+  }
+
+  printReceiptDoc() {
+    if (this.currentReceiptFormat && this.currentReceiptFormat.startsWith('thermal')) {
+      document.body.classList.add('printing-thermal');
+    } else {
+      document.body.classList.remove('printing-thermal');
+    }
+
+    window.print();
+
+    setTimeout(() => {
+      document.body.classList.remove('printing-thermal');
+    }, 1000);
   }
 
   openReportModal(period = null) {

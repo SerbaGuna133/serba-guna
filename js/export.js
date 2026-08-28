@@ -183,7 +183,148 @@ class ExportManager {
     XLSX.writeFile(wb, `Neraca_Lajur_TB_Serba_Guna_${period || 'All'}.xlsx`);
   }
 
-  // 4. Render Faktur Resmi Toko Bangunan (Ukuran A4 / A5 Resmi)
+  // 4. Render Struk Thermal Kasir POS (58mm / 80mm)
+  generateThermalReceiptHTML(txId, paperWidth = '80mm') {
+    const tx = this.store.transactions.find(t => t.id === txId);
+    if (!tx) return `<div class="p-4 text-danger">Transaksi #${txId} tidak ditemukan.</div>`;
+
+    const profile = this.store.storeProfile;
+    const isPiutang = tx.paymentMethod === 'piutang';
+    const isHutang = tx.paymentMethod === 'hutang';
+    const isTransfer = tx.paymentMethod === 'transfer';
+
+    const items = (Array.isArray(tx.items) && tx.items.length > 0) ? tx.items : [{
+      name: tx.title,
+      qty: 1,
+      unit: 'Item',
+      price: tx.amount,
+      subtotal: tx.amount
+    }];
+
+    const dateFormatted = this.store.formatDateIndo(tx.date);
+    const timeFormatted = tx.time || new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+    let methodText = 'TUNAI KASIR';
+    if (isTransfer) methodText = 'TRANSFER BANK / QRIS';
+    else if (isPiutang) methodText = 'BON / TEMPO PROYEK';
+    else if (isHutang) methodText = 'TEMPO DISTRIBUTOR';
+
+    return `
+      <div class="thermal-receipt-wrap paper-${paperWidth}">
+        <div class="thermal-header">
+          <div class="thermal-logo">🏗️</div>
+          <h2 class="thermal-title">${profile.name}</h2>
+          <div class="thermal-sub">${profile.tagline || 'Pusat Bahan Bangunan & Konstruksi'}</div>
+          <div class="thermal-address">${profile.address}</div>
+          <div class="thermal-contact">Telp/WA: ${profile.phone}</div>
+        </div>
+
+        <div class="thermal-divider">================================</div>
+
+        <div class="thermal-meta">
+          <div class="d-flex justify-between">
+            <span>No. Nota :</span>
+            <span class="font-bold font-mono">${tx.id}</span>
+          </div>
+          <div class="d-flex justify-between">
+            <span>Tanggal  :</span>
+            <span>${dateFormatted} ${timeFormatted}</span>
+          </div>
+          <div class="d-flex justify-between">
+            <span>Kasir    :</span>
+            <span>Kasir Utama</span>
+          </div>
+          <div class="d-flex justify-between">
+            <span>${tx.type === 'in' ? 'Pelanggan:' : 'Supplier :'}</span>
+            <span class="font-bold">${tx.customer || tx.supplier || 'Pelanggan Umum'}</span>
+          </div>
+          ${tx.phone ? `
+          <div class="d-flex justify-between">
+            <span>No. HP   :</span>
+            <span>${tx.phone}</span>
+          </div>
+          ` : ''}
+        </div>
+
+        <div class="thermal-divider">--------------------------------</div>
+        <div class="thermal-items-header">
+          <span>ITEM / BARANG</span>
+          <span>TOTAL</span>
+        </div>
+        <div class="thermal-divider">--------------------------------</div>
+
+        <div class="thermal-items-list">
+          ${items.map(it => `
+            <div class="thermal-item-row">
+              <div class="thermal-item-name">${it.name}</div>
+              <div class="thermal-item-details d-flex justify-between">
+                <span>${it.qty} ${it.unit || 'Pcs'} x ${this.store.formatRupiah(it.price)}</span>
+                <span class="font-bold">${this.store.formatRupiah(it.subtotal || (it.qty * it.price))}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="thermal-divider">--------------------------------</div>
+
+        <div class="thermal-summary">
+          <div class="d-flex justify-between thermal-sum-row">
+            <span>TOTAL BELANJA:</span>
+            <span class="thermal-sum-val font-bold">${this.store.formatRupiah(tx.amount)}</span>
+          </div>
+          <div class="d-flex justify-between thermal-sum-row">
+            <span>METODE BAYAR:</span>
+            <span>${methodText}</span>
+          </div>
+          <div class="d-flex justify-between thermal-sum-row">
+            <span>SUDAH DIBAYAR (DP):</span>
+            <span class="font-bold">${this.store.formatRupiah(tx.paidAmount || 0)}</span>
+          </div>
+          ${(isPiutang || isHutang || tx.debtAmount > 0) ? `
+          <div class="thermal-divider">--------------------------------</div>
+          <div class="d-flex justify-between thermal-sum-row font-bold text-danger">
+            <span>SISA TAGIHAN (BON):</span>
+            <span>${this.store.formatRupiah(tx.debtAmount)}</span>
+          </div>
+          ${tx.dueDate ? `
+          <div class="d-flex justify-between thermal-sum-row text-xs">
+            <span>JATUH TEMPO:</span>
+            <span>${this.store.formatDateIndo(tx.dueDate)}</span>
+          </div>
+          ` : ''}
+          <div class="d-flex justify-between thermal-sum-row" style="margin-top: 4px;">
+            <span>STATUS:</span>
+            <span class="font-bold ${tx.debtAmount === 0 ? 'text-success' : 'text-danger'}">
+              ${tx.debtAmount === 0 ? '*** LUNAS ***' : '*** BELUM LUNAS / BON ***'}
+            </span>
+          </div>
+          ` : `
+          <div class="d-flex justify-between thermal-sum-row" style="margin-top: 4px;">
+            <span>STATUS:</span>
+            <span class="font-bold text-success">*** LUNAS ***</span>
+          </div>
+          `}
+        </div>
+
+        ${tx.notes ? `
+        <div class="thermal-divider">--------------------------------</div>
+        <div class="thermal-notes">
+          <strong>Catatan:</strong> ${tx.notes}
+        </div>
+        ` : ''}
+
+        <div class="thermal-divider">================================</div>
+        <div class="thermal-footer">
+          <div>Terima kasih atas kunjungan Anda!</div>
+          <div>Barang yang sudah dibeli tidak dapat ditukar/dikembalikan tanpa nota asli.</div>
+          <div class="thermal-app-tag">-- TB. SERBA GUNA POS --</div>
+        </div>
+        <div class="thermal-cut-space"></div>
+      </div>
+    `;
+  }
+
+  // 5. Render Faktur Resmi Toko Bangunan (Ukuran A4 / A5 Resmi)
   generateOfficialInvoiceHTML(txId) {
     const tx = this.store.transactions.find(t => t.id === txId);
     if (!tx) return "<p>Transaksi tidak ditemukan</p>";

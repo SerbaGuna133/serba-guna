@@ -1220,22 +1220,39 @@
     </div>
   </div>
 
-  <!-- 6. MODAL PREVIEW NOTA / FAKTUR RESMI CETAK -->
+  <!-- 6. MODAL PREVIEW NOTA / FAKTUR RESMI CETAK (THERMAL POS / A4) -->
   <div class="modal-backdrop" id="modalReceiptPreview">
     <div class="modal-content modal-lg">
       <div class="modal-header">
-        <h3 class="modal-title">🖨️ Cetak Faktur & Nota Resmi Toko Bangunan</h3>
-        <div class="d-flex align-center gap-2">
-          <button class="btn btn-primary btn-sm" onclick="window.print()">
+        <h3 class="modal-title">🖨️ Cetak Nota & Struk Penjualan</h3>
+        <div class="d-flex align-center gap-2 flex-wrap">
+          <!-- Format Selector Buttons -->
+          <div class="d-flex gap-1" style="background: var(--bg-subtle); padding: 0.2rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <button type="button" class="btn btn-sm btn-primary" id="btnFormatThermal80" onclick="window.app.switchReceiptFormat('thermal-80')">
+              🧾 Thermal 80mm
+            </button>
+            <button type="button" class="btn btn-sm btn-outline" id="btnFormatThermal58" onclick="window.app.switchReceiptFormat('thermal-58')">
+              🧾 Thermal 58mm
+            </button>
+            <button type="button" class="btn btn-sm btn-outline" id="btnFormatA4" onclick="window.app.switchReceiptFormat('a4')">
+              📄 Faktur A4 / A5
+            </button>
+          </div>
+          <button class="btn btn-success btn-sm" onclick="window.app.printReceiptDoc()">
             <span>🖨️</span> Cetak Sekarang
           </button>
           <button class="btn-icon-only" onclick="window.app.closeModal('modalReceiptPreview')">✕</button>
         </div>
       </div>
-      <div class="modal-body" id="receiptPreviewContent"></div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline" onclick="window.app.closeModal('modalReceiptPreview')">Tutup</button>
-        <button type="button" class="btn btn-primary" onclick="window.print()">🖨️ Cetak Dokumen</button>
+      <div class="modal-body" id="receiptPreviewContent" style="background: #cbd5e1; padding: 1.5rem; display: flex; justify-content: center; overflow-y: auto; max-height: 70vh;"></div>
+      <div class="modal-footer justify-between">
+        <div class="text-xs text-muted">
+          💡 <strong>Tips Cetak Thermal:</strong> Pada kotak dialog print browser, pilih ukuran kertas <em>80mm</em> atau <em>58mm</em> dan hilangkan centang <em>Header and Footer</em> untuk hasil paling rapi.
+        </div>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline" onclick="window.app.closeModal('modalReceiptPreview')">Tutup</button>
+          <button type="button" class="btn btn-success" onclick="window.app.printReceiptDoc()">🖨️ Cetak Dokumen</button>
+        </div>
       </div>
     </div>
   </div>
