@@ -256,92 +256,20 @@ class AppController {
     if (invBadge) invBadge.textContent = lowStockList.length;
   }
 
-  populateTxCategoryOptions(txType = 'in') {
-    const select = document.getElementById('modalTxCategory');
-    if (!select) return;
-
-    const currentVal = select.value;
-    select.innerHTML = '';
-
-    if (txType === 'in') {
-      // 1. Penjualan Material
-      const groupMat = document.createElement('optgroup');
-      groupMat.label = '📦 Penjualan Barang Material Bangunan';
-      MATERIAL_CATEGORIES.filter(c => c.group === 'material').forEach(cat => {
-        const opt = document.createElement('option');
-        opt.value = cat.id;
-        opt.textContent = `${cat.icon} ${cat.name}`;
-        groupMat.appendChild(opt);
-      });
-      select.appendChild(groupMat);
-
-      // 2. Ongkos Kirim
-      const groupShip = document.createElement('optgroup');
-      groupShip.label = '🚚 Jasa Pengiriman & Ekspedisi';
-      MATERIAL_CATEGORIES.filter(c => c.group === 'shipping').forEach(cat => {
-        const opt = document.createElement('option');
-        opt.value = cat.id;
-        opt.textContent = `${cat.icon} ${cat.name}`;
-        groupShip.appendChild(opt);
-      });
-      select.appendChild(groupShip);
-    } else {
-      // 1. Pembelian / Kulakan Stok
-      const groupMat = document.createElement('optgroup');
-      groupMat.label = '📦 Pembelian / Kulakan Stok Gudang';
-      MATERIAL_CATEGORIES.filter(c => c.group === 'material').forEach(cat => {
-        const opt = document.createElement('option');
-        opt.value = cat.id;
-        opt.textContent = `${cat.icon} ${cat.name}`;
-        groupMat.appendChild(opt);
-      });
-      select.appendChild(groupMat);
-
-      // 2. Biaya Operasional Toko
-      const groupExp = document.createElement('optgroup');
-      groupExp.label = '💸 Biaya Operasional Toko (Beban Harian)';
-      MATERIAL_CATEGORIES.filter(c => c.group === 'expense').forEach(cat => {
-        const opt = document.createElement('option');
-        opt.value = cat.id;
-        opt.textContent = `${cat.icon} ${cat.name}`;
-        groupExp.appendChild(opt);
-      });
-      select.appendChild(groupExp);
-    }
-
-    if (currentVal && select.querySelector(`option[value="${currentVal}"]`)) {
-      select.value = currentVal;
-    }
-  }
-
   populateCategoryOptions() {
-    // 1. Filter Transaksi (Semua Kategori dengan Optgroup)
+    // 1. Filter Transaksi
     const txFilter = document.getElementById('txCategoryFilter');
     if (txFilter) {
-      txFilter.innerHTML = '<option value="">Semua Kategori Transaksi</option>';
-      
-      const grpMat = document.createElement('optgroup');
-      grpMat.label = '📦 Barang Material';
+      txFilter.innerHTML = '<option value="">Semua Kategori Material</option>';
       MATERIAL_CATEGORIES.filter(c => c.group === 'material').forEach(c => {
         const opt = document.createElement('option');
         opt.value = c.id;
         opt.textContent = `${c.icon} ${c.name}`;
-        grpMat.appendChild(opt);
+        txFilter.appendChild(opt);
       });
-      txFilter.appendChild(grpMat);
-
-      const grpOther = document.createElement('optgroup');
-      grpOther.label = '🚚 Ongkir & 💸 Biaya Operasional';
-      MATERIAL_CATEGORIES.filter(c => c.group !== 'material').forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.id;
-        opt.textContent = `${c.icon} ${c.name}`;
-        grpOther.appendChild(opt);
-      });
-      txFilter.appendChild(grpOther);
     }
 
-    // 2. Filter Inventori & Modal Tambah Barang Master (HANYA Barang Fisik / Material)
+    // 2. Filter Inventori & Modal Tambah Barang Master (HANYA Barang Fisik Material)
     const invSelects = [
       document.getElementById('invCategoryFilter'),
       document.getElementById('modalProdCategory')
@@ -359,9 +287,6 @@ class AppController {
         select.appendChild(opt);
       });
     });
-
-    // 3. Modal Transaksi Baru (Default: Penjualan 'in')
-    this.populateTxCategoryOptions('in');
   }
 
   populateCOAOptions() {
@@ -1470,12 +1395,10 @@ class AppController {
     const groupDueDate = document.getElementById('groupDueDate');
     const groupDebtCalc = document.getElementById('groupDebtCalc');
     const labelPaidAmount = document.getElementById('labelPaidAmount');
-    const catLabel = document.getElementById('modalTxCategoryLabel');
 
     if (type === 'in') {
       contactLabel.textContent = 'Nama Pelanggan / Kontraktor Proyek:';
-      contactInput.placeholder = 'Contoh: Pak Haji Bambang (Proyek Ruko 2 Lantai)';
-      if (catLabel) catLabel.textContent = 'Kategori Penjualan / Layanan:';
+      contactInput.placeholder = 'Contoh: Pak Haji Bambang (Proyek Ruko)';
       if (currentMethod === 'hutang') currentMethod = 'piutang';
 
       methodSelect.innerHTML = `
@@ -1484,9 +1407,8 @@ class AppController {
         <option value="piutang" ${currentMethod === 'piutang' ? 'selected' : ''}>📑 Bon Pelanggan / Piutang Proyek (Bisa DP / Bayar Nanti)</option>
       `;
     } else {
-      contactLabel.textContent = 'Nama Supplier / Penerima Biaya:';
-      contactInput.placeholder = 'Contoh: Distributor Semen Gresik / Tim Kuli Bongkar';
-      if (catLabel) catLabel.textContent = 'Kategori Pembelian / Biaya Toko:';
+      contactLabel.textContent = 'Nama Supplier / Distributor Pabrik:';
+      contactInput.placeholder = 'Contoh: Distributor Semen Gresik / Pabrik Besi';
       if (currentMethod === 'piutang') currentMethod = 'hutang';
 
       methodSelect.innerHTML = `
@@ -1495,8 +1417,6 @@ class AppController {
         <option value="hutang" ${currentMethod === 'hutang' ? 'selected' : ''}>🤝 Tempo Supplier / Hutang Dagang (Distributor)</option>
       `;
     }
-
-    this.populateTxCategoryOptions(type);
 
     const activeMethod = methodSelect.value;
 
@@ -2168,10 +2088,12 @@ class AppController {
       return;
     }
 
+    const primaryCategory = (items[0] && items[0].id) ? (this.inventory?.products.find(p => p.id === items[0].id)?.category || 'lainnya') : 'lainnya';
+
     const txData = {
       type: txType,
       paymentMethod: document.getElementById('modalTxPaymentMethod').value,
-      category: document.getElementById('modalTxCategory').value,
+      category: primaryCategory,
       date: document.getElementById('modalTxDate').value,
       title: document.getElementById('modalTxTitleInput').value,
       customer: document.getElementById('modalTxContactName').value,
