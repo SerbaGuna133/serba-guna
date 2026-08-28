@@ -954,9 +954,10 @@ class AppController {
             </span>
           </td>
           <td class="text-center">
-            ${acc.isCustom ? `
-              <button class="btn-icon-only btn-sm text-danger" onclick="window.app.deleteCOAAccount('${acc.code}')" title="Hapus Akun Kustom">🗑️</button>
-            ` : '<span class="text-muted text-xs">-</span>'}
+            <div class="table-actions justify-center">
+              <button class="btn-icon-only btn-sm" onclick="window.app.openEditCOAModal('${acc.code}')" title="Edit Akun COA">✏️</button>
+              <button class="btn-icon-only btn-sm text-danger" onclick="window.app.deleteCOAAccount('${acc.code}')" title="Hapus Akun COA">🗑️</button>
+            </div>
           </td>
         </tr>
       `;
@@ -1219,20 +1220,58 @@ class AppController {
     }
   }
 
-  // 3. Modal Tambah Akun COA Manual
+  // 3. Modal Tambah / Edit Akun COA
   openNewCOAModal() {
+    this.editingCOACode = null;
     const form = document.getElementById('formNewCOA');
     if (form) form.reset();
+
+    const titleEl = document.querySelector('#modalNewCOA .modal-title');
+    if (titleEl) titleEl.textContent = '🏷️ Tambah Akun Bagan Akun (COA) Baru';
+
+    const codeInput = document.getElementById('modalCOACode');
+    if (codeInput) {
+      codeInput.readOnly = false;
+    }
+
+    this.openModal('modalNewCOA');
+  }
+
+  openEditCOAModal(code) {
+    const acc = this.accounting.getAccount(code);
+    if (!acc) {
+      this.showToast("Data akun COA tidak ditemukan.", "danger");
+      return;
+    }
+
+    this.editingCOACode = code;
+    const titleEl = document.querySelector('#modalNewCOA .modal-title');
+    if (titleEl) titleEl.textContent = `✏️ Edit Akun COA: ${acc.code} - ${acc.name}`;
+
+    const codeInput = document.getElementById('modalCOACode');
+    if (codeInput) {
+      codeInput.value = acc.code;
+      codeInput.readOnly = true;
+    }
+
+    document.getElementById('modalCOAName').value = acc.name;
+    document.getElementById('modalCOACategory').value = acc.category;
+    document.getElementById('modalCOANormal').value = acc.normalBalance;
+    document.getElementById('modalCOAOpening').value = this.accounting.openingBalances[acc.code] || 0;
+
     this.openModal('modalNewCOA');
   }
 
   deleteCOAAccount(code) {
-    if (confirm(`Apakah Anda yakin ingin menghapus akun COA ${code}?`)) {
+    const acc = this.accounting.getAccount(code);
+    const accName = acc ? acc.name : code;
+    if (confirm(`Apakah Anda yakin ingin menghapus akun COA ${code} - ${accName}?\n\nPerhatian: Akun ini tidak akan lagi muncul di pilihan jurnal dan laporan keuangan.`)) {
       try {
-        this.accounting.deleteAccount(code);
-        this.populateCOAOptions();
-        this.renderCOAView();
-        this.showToast(`Akun COA ${code} berhasil dihapus!`);
+        if (this.accounting.deleteAccount(code)) {
+          this.populateCOAOptions();
+          this.renderCOAView();
+          this.showToast(`Akun COA ${code} berhasil dihapus!`, 'warning');
+        }
       } catch (e) {
         alert(e.message);
       }
@@ -1681,20 +1720,26 @@ class AppController {
   }
 
   handleSaveCOA() {
+    const code = document.getElementById('modalCOACode').value.trim();
     const accountData = {
-      code: document.getElementById('modalCOACode').value,
-      name: document.getElementById('modalCOAName').value,
+      code: code,
+      name: document.getElementById('modalCOAName').value.trim(),
       category: document.getElementById('modalCOACategory').value,
       normalBalance: document.getElementById('modalCOANormal').value,
       openingBalance: parseFloat(document.getElementById('modalCOAOpening').value) || 0
     };
 
     try {
-      this.accounting.addAccount(accountData);
+      if (this.editingCOACode) {
+        this.accounting.updateAccount(this.editingCOACode, accountData);
+        this.showToast(`Akun COA ${accountData.code} - ${accountData.name} berhasil diperbarui!`);
+      } else {
+        this.accounting.addAccount(accountData);
+        this.showToast(`Akun COA ${accountData.code} - ${accountData.name} berhasil ditambahkan!`);
+      }
       this.populateCOAOptions();
       this.closeModal('modalNewCOA');
-      this.renderCOAView();
-      this.showToast(`Akun COA ${accountData.code} - ${accountData.name} berhasil ditambahkan!`);
+      this.refreshCurrentView();
     } catch (e) {
       alert(e.message);
     }

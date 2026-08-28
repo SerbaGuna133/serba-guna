@@ -83,13 +83,14 @@ class AccountingEngine {
   }
 
   addAccount(accountData) {
-    const existing = this.coa.find(a => a.code === accountData.code);
+    const code = accountData.code.trim();
+    const existing = this.coa.find(a => a.code === code);
     if (existing) {
-      throw new Error(`Kode akun ${accountData.code} sudah digunakan oleh ${existing.name}`);
+      throw new Error(`Kode akun ${code} sudah digunakan oleh ${existing.name}`);
     }
 
     const newAcc = {
-      code: accountData.code.trim(),
+      code: code,
       name: accountData.name.trim(),
       category: accountData.category || "beban_operasional",
       normalBalance: accountData.normalBalance || "debit",
@@ -100,20 +101,35 @@ class AccountingEngine {
     this.coa.sort((a, b) => a.code.localeCompare(b.code));
     this.saveCOA();
 
-    if (accountData.openingBalance && Number(accountData.openingBalance) > 0) {
-      this.openingBalances[newAcc.code] = Number(accountData.openingBalance);
+    if (accountData.openingBalance !== undefined) {
+      this.openingBalances[newAcc.code] = Number(accountData.openingBalance) || 0;
       this.saveOpeningBalances();
     }
 
     return newAcc;
   }
 
+  updateAccount(code, accountData) {
+    const acc = this.coa.find(a => a.code === code);
+    if (!acc) throw new Error("Akun COA tidak ditemukan.");
+
+    acc.name = accountData.name.trim();
+    if (accountData.category) acc.category = accountData.category;
+    if (accountData.normalBalance) acc.normalBalance = accountData.normalBalance;
+
+    this.saveCOA();
+
+    if (accountData.openingBalance !== undefined) {
+      this.openingBalances[code] = Number(accountData.openingBalance) || 0;
+      this.saveOpeningBalances();
+    }
+
+    return acc;
+  }
+
   deleteAccount(code) {
     const idx = this.coa.findIndex(a => a.code === code);
     if (idx === -1) return false;
-    if (!this.coa[idx].isCustom) {
-      throw new Error("Akun sistem standar tidak dapat dihapus.");
-    }
 
     this.coa.splice(idx, 1);
     delete this.openingBalances[code];
