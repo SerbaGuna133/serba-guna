@@ -522,12 +522,27 @@ class AppController {
       return `
         <tr>
           <td class="font-mono text-xs"><strong>${p.id}</strong></td>
-          <td><strong>${p.name}</strong></td>
+          <td>
+            <strong>${p.name}</strong>
+            ${p.hasMultiUnit ? `<div style="font-size: 0.72rem; color: #d97706; font-weight: 600; margin-top: 0.15rem;">📦 1 ${p.packUnit} = ${p.packRatio} ${p.unit}</div>` : ''}
+          </td>
           <td><span class="category-pill">${catObj.icon} ${catObj.name}</span></td>
-          <td>${p.unit}</td>
-          <td class="text-right">${this.store.formatRupiah(p.buyPrice)}</td>
-          <td class="text-right font-bold text-success">${this.store.formatRupiah(p.sellPrice)}</td>
-          <td class="text-center font-bold" style="font-size: 0.95rem;">${p.stock}</td>
+          <td>
+            <strong>${p.unit}</strong>
+            ${p.hasMultiUnit ? `<div class="text-xs text-muted">/ ${p.packUnit}</div>` : ''}
+          </td>
+          <td class="text-right">
+            ${this.store.formatRupiah(p.buyPrice)}
+            ${p.hasMultiUnit && p.packBuyPrice ? `<div class="text-xs text-muted font-normal">${this.store.formatRupiah(p.packBuyPrice)}/${p.packUnit}</div>` : ''}
+          </td>
+          <td class="text-right font-bold text-success">
+            ${this.store.formatRupiah(p.sellPrice)}
+            ${p.hasMultiUnit && p.packSellPrice ? `<div class="text-xs text-muted font-normal" style="color: #b45309;">${this.store.formatRupiah(p.packSellPrice)}/${p.packUnit}</div>` : ''}
+          </td>
+          <td class="text-center font-bold" style="font-size: 0.95rem;">
+            ${p.stock} <small class="font-normal text-muted">${p.unit}</small>
+            ${p.hasMultiUnit && p.packRatio > 1 ? `<div class="text-xs text-muted font-normal">≈ ${(p.stock / p.packRatio).toFixed(1)} ${p.packUnit}</div>` : ''}
+          </td>
           <td>
             <span class="badge ${isLow ? 'badge-danger' : 'badge-success'}">
               ${isLow ? '⚠️ STOK MENIPIS' : '✅ TERSEDIA'}
@@ -1167,48 +1182,111 @@ class AppController {
     this.openModal('modalNewTransaction');
   }
 
-  addItemRow(name = '', qty = 1, unit = 'Sak', price = 0, productId = '') {
+  addItemRow(name = '', qty = 1, unit = 'Pcs', price = 0, productId = '', unitRatio = 1) {
     const container = document.getElementById('itemsBuilderContainer');
     if (!container) return;
 
     const row = document.createElement('div');
     row.className = 'items-builder-row';
 
-    // Datalist options dari master inventori
     const productsList = this.inventory ? this.inventory.products : [];
     const datalistId = `dl-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+
+    const matched = productsList.find(p => (productId && p.id === productId) || (name && p.name.toLowerCase() === name.toLowerCase()));
+    const units = matched ? this.inventory.getProductUnits(matched) : [];
+
+    let unitControlHTML = '';
+    if (units.length > 1) {
+      unitControlHTML = `
+        <select class="form-control item-unit-select">
+          ${units.map(u => `<option value="${u.unitName}" data-ratio="${u.ratio}" data-price="${u.sellPrice}" data-buy="${u.buyPrice}" ${u.unitName === unit ? 'selected' : ''}>${u.label}</option>`).join('')}
+        </select>
+      `;
+    } else {
+      unitControlHTML = `<input type="text" class="form-control item-unit" placeholder="Satuan" value="${unit || 'Pcs'}" />`;
+    }
 
     row.innerHTML = `
       <div>
         <input type="text" list="${datalistId}" class="form-control item-name" placeholder="Ketik / pilih barang material..." value="${name}" required />
         <datalist id="${datalistId}">
-          ${productsList.map(p => `<option value="${p.name}" data-id="${p.id}" data-unit="${p.unit}" data-price="${p.sellPrice}" data-buy="${p.buyPrice}">Stok: ${p.stock} ${p.unit} | Rp ${p.sellPrice}</option>`).join('')}
+          ${productsList.map(p => {
+            const packInfo = p.hasMultiUnit ? ` | 📦 1 ${p.packUnit}=${p.packRatio} ${p.unit}` : '';
+            return `<option value="${p.name}" data-id="${p.id}" data-unit="${p.unit}" data-price="${p.sellPrice}" data-buy="${p.buyPrice}">Stok: ${p.stock} ${p.unit}${packInfo} | Rp ${p.sellPrice}</option>`;
+          }).join('')}
         </datalist>
-        <input type="hidden" class="item-product-id" value="${productId}" />
+        <input type="hidden" class="item-product-id" value="${productId || (matched ? matched.id : '')}" />
+        <input type="hidden" class="item-unit-ratio" value="${unitRatio || 1}" />
         <input type="hidden" class="item-cogs" value="0" />
       </div>
       <input type="number" class="form-control item-qty" placeholder="Qty" value="${qty}" min="0.1" step="any" required />
-      <input type="text" class="form-control item-unit" placeholder="Satuan" value="${unit}" />
+      <div class="item-unit-wrapper">${unitControlHTML}</div>
       <input type="number" class="form-control item-price" placeholder="Harga (Rp)" value="${price}" min="0" step="100" required />
       <button type="button" class="btn-icon-only text-danger btn-remove-item" title="Hapus Baris">✕</button>
     `;
 
     const nameInput = row.querySelector('.item-name');
+    const unitWrapper = row.querySelector('.item-unit-wrapper');
+
+    const updateUnitControl = (prod) => {
+      if (!prod) {
+        unitWrapper.innerHTML = `<input type="text" class="form-control item-unit" placeholder="Satuan" value="Pcs" />`;
+        row.querySelector('.item-unit-ratio').value = 1;
+        return;
+      }
+
+      const availableUnits = this.inventory.getProductUnits(prod);
+      if (availableUnits.length > 1) {
+        unitWrapper.innerHTML = `
+          <select class="form-control item-unit-select">
+            ${availableUnits.map(u => `<option value="${u.unitName}" data-ratio="${u.ratio}" data-price="${u.sellPrice}" data-buy="${u.buyPrice}">${u.label}</option>`).join('')}
+          </select>
+        `;
+        const sel = unitWrapper.querySelector('.item-unit-select');
+        const selectedOpt = sel.options[sel.selectedIndex];
+        row.querySelector('.item-unit-ratio').value = selectedOpt.dataset.ratio || 1;
+        row.querySelector('.item-price').value = selectedOpt.dataset.price || prod.sellPrice;
+        row.querySelector('.item-cogs').value = selectedOpt.dataset.buy || prod.buyPrice;
+
+        sel.addEventListener('change', (e) => {
+          const opt = e.target.options[e.target.selectedIndex];
+          row.querySelector('.item-unit-ratio').value = opt.dataset.ratio || 1;
+          row.querySelector('.item-price').value = opt.dataset.price || 0;
+          row.querySelector('.item-cogs').value = opt.dataset.buy || 0;
+          this.recalculateItemsTotal();
+        });
+      } else {
+        unitWrapper.innerHTML = `<input type="text" class="form-control item-unit" placeholder="Satuan" value="${prod.unit || 'Pcs'}" />`;
+        row.querySelector('.item-unit-ratio').value = 1;
+        row.querySelector('.item-price').value = prod.sellPrice;
+        row.querySelector('.item-cogs').value = prod.buyPrice;
+      }
+      this.recalculateItemsTotal();
+    };
+
     nameInput.addEventListener('input', (e) => {
       const val = e.target.value;
-      const matched = productsList.find(p => p.name.toLowerCase() === val.toLowerCase());
-      if (matched) {
-        row.querySelector('.item-product-id').value = matched.id;
-        row.querySelector('.item-unit').value = matched.unit;
-        row.querySelector('.item-price').value = matched.sellPrice;
-        row.querySelector('.item-cogs').value = matched.buyPrice;
-        this.recalculateItemsTotal();
+      const found = productsList.find(p => p.name.toLowerCase() === val.toLowerCase());
+      if (found) {
+        row.querySelector('.item-product-id').value = found.id;
+        updateUnitControl(found);
       }
     });
 
     row.querySelectorAll('input').forEach(inp => {
       inp.addEventListener('input', () => this.recalculateItemsTotal());
     });
+
+    const initialSel = row.querySelector('.item-unit-select');
+    if (initialSel) {
+      initialSel.addEventListener('change', (e) => {
+        const opt = e.target.options[e.target.selectedIndex];
+        row.querySelector('.item-unit-ratio').value = opt.dataset.ratio || 1;
+        row.querySelector('.item-price').value = opt.dataset.price || 0;
+        row.querySelector('.item-cogs').value = opt.dataset.buy || 0;
+        this.recalculateItemsTotal();
+      });
+    }
 
     row.querySelector('.btn-remove-item').addEventListener('click', () => {
       row.remove();
@@ -1324,11 +1402,50 @@ class AppController {
     if (elRetail) elRetail.textContent = this.store.formatRupiah(totalRetail);
   }
 
+  toggleMultiUnitFields() {
+    const chk = document.getElementById('modalProdHasMultiUnit');
+    const wrap = document.getElementById('multiUnitFieldsWrap');
+    if (!chk || !wrap) return;
+
+    if (chk.checked) {
+      wrap.style.display = 'block';
+    } else {
+      wrap.style.display = 'none';
+    }
+  }
+
+  recalculatePackToRetailBuyPrice() {
+    const hasMulti = document.getElementById('modalProdHasMultiUnit')?.checked;
+    if (!hasMulti) return;
+
+    const packBuy = parseFloat(document.getElementById('modalProdPackBuyPrice')?.value) || 0;
+    const ratio = parseFloat(document.getElementById('modalProdPackRatio')?.value) || 1;
+    const helper = document.getElementById('modalPackBuyHelper');
+
+    if (packBuy > 0 && ratio > 0) {
+      const perPcs = Math.round(packBuy / ratio);
+      if (helper) helper.textContent = `Modal per unit eceran: ${this.store.formatRupiah(perPcs)} / pcs`;
+      
+      const buyPriceInput = document.getElementById('modalProdBuyPrice');
+      if (buyPriceInput && (!buyPriceInput.value || parseFloat(buyPriceInput.value) === 0)) {
+        buyPriceInput.value = perPcs;
+      }
+    } else if (helper) {
+      helper.textContent = 'Modal eceran otomatis dihitung per pcs';
+    }
+    this.recalculateProductModalAsset();
+  }
+
   openNewProductModal() {
     this.editingProdId = null;
     const form = document.getElementById('formNewProduct');
     if (form) form.reset();
     document.getElementById('modalProductTitle').textContent = `📦 Tambah Master Barang Material`;
+    
+    const multiChk = document.getElementById('modalProdHasMultiUnit');
+    if (multiChk) multiChk.checked = false;
+    this.toggleMultiUnitFields();
+
     this.recalculateProductModalAsset();
     this.openModal('modalNewProduct');
   }
@@ -1348,6 +1465,15 @@ class AppController {
     document.getElementById('modalProdMinStock').value = p.minStock;
     document.getElementById('modalProdLocation').value = p.location || '';
 
+    const multiChk = document.getElementById('modalProdHasMultiUnit');
+    if (multiChk) multiChk.checked = Boolean(p.hasMultiUnit);
+    document.getElementById('modalProdPackUnit').value = p.packUnit || '';
+    document.getElementById('modalProdPackRatio').value = p.packRatio || 1;
+    document.getElementById('modalProdPackBuyPrice').value = p.packBuyPrice || '';
+    document.getElementById('modalProdPackSellPrice').value = p.packSellPrice || '';
+
+    this.toggleMultiUnitFields();
+    this.recalculatePackToRetailBuyPrice();
     this.recalculateProductModalAsset();
     this.openModal('modalNewProduct');
   }
@@ -1727,6 +1853,10 @@ class AppController {
     ['modalProdBuyPrice', 'modalProdSellPrice', 'modalProdStock'].forEach(id => {
       document.getElementById(id)?.addEventListener('input', () => this.recalculateProductModalAsset());
     });
+    document.getElementById('modalProdHasMultiUnit')?.addEventListener('change', () => this.toggleMultiUnitFields());
+    ['modalProdPackBuyPrice', 'modalProdPackRatio', 'modalProdPackSellPrice'].forEach(id => {
+      document.getElementById(id)?.addEventListener('input', () => this.recalculatePackToRetailBuyPrice());
+    });
 
     // COA Events
     document.getElementById('btnOpenNewCOAModal')?.addEventListener('click', () => this.openNewCOAModal());
@@ -1856,13 +1986,14 @@ class AppController {
     document.querySelectorAll('#itemsBuilderContainer .items-builder-row').forEach(row => {
       const name = row.querySelector('.item-name')?.value.trim();
       const qty = parseFloat(row.querySelector('.item-qty')?.value) || 1;
-      const unit = row.querySelector('.item-unit')?.value.trim() || 'Pcs';
+      const unit = row.querySelector('.item-unit-select')?.value || row.querySelector('.item-unit')?.value.trim() || 'Pcs';
+      const unitRatio = parseFloat(row.querySelector('.item-unit-ratio')?.value) || 1;
       const price = parseFloat(row.querySelector('.item-price')?.value) || 0;
       const productId = row.querySelector('.item-product-id')?.value || '';
       const cogs = parseFloat(row.querySelector('.item-cogs')?.value) || 0;
 
       if (name) {
-        items.push({ id: productId, name, qty, unit, price, cogs, subtotal: qty * price });
+        items.push({ id: productId, name, qty, unit, unitRatio, price, cogs, subtotal: qty * price });
       }
     });
 
@@ -1899,7 +2030,16 @@ class AppController {
   }
 
   handleSaveProduct() {
-    const buyPrice = parseFloat(document.getElementById('modalProdBuyPrice').value) || 0;
+    const hasMultiUnit = Boolean(document.getElementById('modalProdHasMultiUnit')?.checked);
+    const packUnit = (document.getElementById('modalProdPackUnit')?.value || '').trim();
+    const packRatio = hasMultiUnit ? Math.max(1, parseFloat(document.getElementById('modalProdPackRatio')?.value) || 1) : 1;
+    const packBuyPrice = hasMultiUnit ? (parseFloat(document.getElementById('modalProdPackBuyPrice')?.value) || 0) : 0;
+    const packSellPrice = hasMultiUnit ? (parseFloat(document.getElementById('modalProdPackSellPrice')?.value) || 0) : 0;
+
+    let buyPrice = parseFloat(document.getElementById('modalProdBuyPrice').value) || 0;
+    if (hasMultiUnit && packBuyPrice > 0 && buyPrice === 0) {
+      buyPrice = Math.round(packBuyPrice / packRatio);
+    }
     const sellPrice = parseFloat(document.getElementById('modalProdSellPrice').value) || 0;
     const stock = parseFloat(document.getElementById('modalProdStock').value) || 0;
     const totalAssetVal = buyPrice * stock;
@@ -1907,9 +2047,14 @@ class AppController {
     const prodData = {
       name: document.getElementById('modalProdName').value.trim(),
       category: document.getElementById('modalProdCategory').value,
-      unit: document.getElementById('modalProdUnit').value.trim(),
+      unit: document.getElementById('modalProdUnit').value.trim() || 'Pcs',
       buyPrice: buyPrice,
       sellPrice: sellPrice,
+      hasMultiUnit: hasMultiUnit,
+      packUnit: packUnit,
+      packRatio: packRatio,
+      packBuyPrice: packBuyPrice,
+      packSellPrice: packSellPrice,
       stock: stock,
       minStock: parseFloat(document.getElementById('modalProdMinStock').value) || 5,
       location: document.getElementById('modalProdLocation').value.trim()

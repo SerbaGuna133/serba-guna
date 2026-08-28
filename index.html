@@ -1123,19 +1123,52 @@
               <select id="modalProdCategory" class="form-control" required></select>
             </div>
             <div class="form-group">
-              <label class="form-label">Satuan:</label>
-              <input type="text" id="modalProdUnit" class="form-control" placeholder="Sak / Batang / Lembar / Truk / Pcs" required />
+              <label class="form-label">Satuan Dasar (Terkecil / Eceran):</label>
+              <input type="text" id="modalProdUnit" class="form-control" placeholder="Pcs / Meter / Kg / Lembar / Batang" required />
+            </div>
+          </div>
+
+          <!-- Multi-Satuan Kemasan (Dus / Box / Lusin / Sak) -->
+          <div style="background: var(--bg-subtle); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px dashed var(--border-color); margin-bottom: 1rem;">
+            <label class="d-flex align-center gap-2" style="cursor: pointer; user-select: none; font-weight: 700; font-size: 0.85rem; color: var(--text-main);">
+              <input type="checkbox" id="modalProdHasMultiUnit" />
+              <span>📦 Memiliki Satuan Kemasan / Grosir (Dus, Box, Sak, Lusin, dll.)</span>
+            </label>
+
+            <div id="multiUnitFieldsWrap" style="display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color);">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label">Nama Satuan Kemasan:</label>
+                  <input type="text" id="modalProdPackUnit" class="form-control" placeholder="Contoh: Dus / Box / Sak / Lusin / Roll" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Isi per Kemasan (Konversi ke Eceran):</label>
+                  <input type="number" id="modalProdPackRatio" class="form-control font-bold" min="1" step="any" placeholder="Contoh: 6 (1 Dus = 6 Pcs)" />
+                </div>
+              </div>
+              <div class="form-grid mt-2">
+                <div class="form-group">
+                  <label class="form-label">Harga Beli Kemasan / Dus (Rp):</label>
+                  <input type="number" id="modalProdPackBuyPrice" class="form-control" min="0" step="100" placeholder="Contoh: 60000" />
+                  <small class="text-xs text-muted" id="modalPackBuyHelper">Modal eceran otomatis dihitung per pcs</small>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Harga Jual Kemasan / Dus (Rp):</label>
+                  <input type="number" id="modalProdPackSellPrice" class="form-control font-bold text-success" min="0" step="100" placeholder="Contoh: 72000" />
+                  <small class="text-xs text-muted">Harga jika pelanggan beli langsung 1 dus</small>
+                </div>
+              </div>
             </div>
           </div>
 
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label">Harga Modal / Beli (HPP):</label>
+              <label class="form-label">Harga Modal / Beli Eceran (HPP):</label>
               <input type="number" id="modalProdBuyPrice" class="form-control" min="0" step="100" placeholder="0" required />
             </div>
             <div class="form-group">
-              <label class="form-label">Harga Jual Kasir (Rp):</label>
-              <input type="number" id="modalProdSellPrice" class="form-control font-bold" min="0" step="100" placeholder="0" required />
+              <label class="form-label">Harga Jual Kasir Eceran (Rp):</label>
+              <input type="number" id="modalProdSellPrice" class="form-control font-bold text-success" min="0" step="100" placeholder="0" required />
             </div>
           </div>
 
