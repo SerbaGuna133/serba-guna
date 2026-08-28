@@ -2233,21 +2233,24 @@ class AppController {
 
     if (status) status.textContent = "Menghubungkan kamera HP...";
 
-    // Use Html5Qrcode if available (Supports 100% Android & iPhone browsers)
-    if (window.Html5Qrcode) {
+    if (typeof Html5Qrcode !== 'undefined') {
       try {
-        if (!this.html5QrCode) {
-          this.html5QrCode = new Html5Qrcode("html5QrcodeReader");
+        if (this.html5QrCode && this.html5QrCode.isScanning) {
+          try {
+            await this.html5QrCode.stop();
+          } catch (e) {}
         }
+
+        const container = document.getElementById("html5QrcodeReader");
+        if (container) container.innerHTML = '';
+
+        this.html5QrCode = new Html5Qrcode("html5QrcodeReader");
 
         const facing = this.cameraFacingMode || "environment";
         const config = {
           fps: 15,
           qrbox: { width: 250, height: 140 },
-          aspectRatio: 1.0,
-          experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true
-          }
+          aspectRatio: 1.2
         };
 
         await this.html5QrCode.start(
@@ -2261,13 +2264,15 @@ class AppController {
           },
           () => {}
         );
-        if (status) status.textContent = "✅ Kamera aktif. Arahkan barcode ke kotak hijau di atas.";
+        if (status) status.textContent = "✅ Kamera aktif! Arahkan barcode ke kotak bidik di atas.";
       } catch (err) {
         console.warn("Gagal start Html5Qrcode:", err);
-        if (status) status.textContent = `⚠️ Kamera belum aktif: ${err.message || 'Izin kamera ditolak'}. Pastikan klik Izinkan / Allow saat browser meminta akses kamera.`;
+        if (status) {
+          status.innerHTML = `<span style="color: #ef4444; font-weight: 700;">⚠️ Akses kamera: ${err.message || 'Izin kamera ditolak'}. Pastikan tombol Izinkan/Allow kamera diklik di browser HP Anda.</span>`;
+        }
       }
     } else {
-      if (status) status.textContent = "Sedang memuat engine scanner kamera HP...";
+      if (status) status.textContent = "⚠️ Engine kamera scanner sedang dimuat, silakan coba lagi dalam 2 detik.";
     }
   }
 
