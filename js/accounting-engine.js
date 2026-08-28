@@ -261,10 +261,51 @@ class AccountingEngine {
     return newJournal;
   }
 
+  generateJournalsFromInventory() {
+    const journals = [];
+    if (!window.inventoryStore || !Array.isArray(window.inventoryStore.products)) {
+      return journals;
+    }
+
+    window.inventoryStore.products.forEach(p => {
+      const stock = Number(p.stock) || 0;
+      const buyPrice = Number(p.buyPrice) || 0;
+      const totalAsset = stock * buyPrice;
+
+      if (totalAsset > 0) {
+        const dateStr = p.updatedAt ? p.updatedAt.split('T')[0] : new Date().toISOString().split('T')[0];
+        journals.push({
+          id: `JRN-STK-${p.id}`,
+          date: dateStr,
+          voucherNo: `STK-${p.id}`,
+          desc: `Stok Masuk / Modal Persediaan: ${p.name} (${stock} ${p.unit} @ Rp ${buyPrice.toLocaleString('id-ID')})`,
+          lines: [
+            {
+              accountCode: '1104',
+              debit: totalAsset,
+              credit: 0,
+              desc: `Penambahan Nilai Stok Material: ${p.name}`
+            },
+            {
+              accountCode: '3101',
+              debit: 0,
+              credit: totalAsset,
+              desc: `Modal Persediaan Stok Pemilik Toko`
+            }
+          ],
+          isAuto: true
+        });
+      }
+    });
+
+    return journals;
+  }
+
   getAllJournals(period = '') {
     const rawTx = window.transactionStore ? window.transactionStore.transactions : [];
     const autoJrn = this.generateJournalsFromTransactions(rawTx);
-    const combined = [...autoJrn, ...this.manualJournals];
+    const stockJrn = this.generateJournalsFromInventory();
+    const combined = [...autoJrn, ...stockJrn, ...this.manualJournals];
 
     combined.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
