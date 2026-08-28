@@ -1115,10 +1115,22 @@ button, input, select, textarea {
 
 .items-builder-row {
   display: grid;
-  grid-template-columns: 2.2fr 1fr 1fr 1.5fr auto;
+  grid-template-columns: 2.2fr 1fr 1.2fr 1.4fr auto;
   gap: 0.45rem;
-  align-items: center;
-  margin-bottom: 0.45rem;
+  align-items: start;
+  margin-bottom: 0.65rem;
+}
+
+.item-stock-badge {
+  font-size: 0.72rem;
+  margin-top: 0.25rem;
+  line-height: 1.2;
+}
+
+.item-qty.stock-exceeded {
+  border-color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+  color: #ef4444 !important;
 }
 
 /* ==================== PRINT & OFFICIAL INVOICE STYLES ==================== */

@@ -1218,20 +1218,63 @@ class AppController {
         <input type="hidden" class="item-product-id" value="${productId || (matched ? matched.id : '')}" />
         <input type="hidden" class="item-unit-ratio" value="${unitRatio || 1}" />
         <input type="hidden" class="item-cogs" value="0" />
+        <div class="item-stock-badge"></div>
       </div>
-      <input type="number" class="form-control item-qty" placeholder="Qty" value="${qty}" min="0.1" step="any" required />
+      <div>
+        <input type="number" class="form-control item-qty" placeholder="Qty" value="${qty}" min="0.1" step="any" required />
+        <div class="item-qty-warning text-xs text-danger font-bold" style="display: none; margin-top: 2px;"></div>
+      </div>
       <div class="item-unit-wrapper">${unitControlHTML}</div>
       <input type="number" class="form-control item-price" placeholder="Harga (Rp)" value="${price}" min="0" step="100" required />
-      <button type="button" class="btn-icon-only text-danger btn-remove-item" title="Hapus Baris">✕</button>
+      <button type="button" class="btn-icon-only text-danger btn-remove-item" title="Hapus Baris" style="margin-top: 5px;">✕</button>
     `;
 
     const nameInput = row.querySelector('.item-name');
+    const qtyInput = row.querySelector('.item-qty');
     const unitWrapper = row.querySelector('.item-unit-wrapper');
+    const stockBadge = row.querySelector('.item-stock-badge');
+    const qtyWarning = row.querySelector('.item-qty-warning');
+
+    const validateAndRenderStock = (prod) => {
+      if (!prod) {
+        stockBadge.innerHTML = '';
+        if (qtyWarning) qtyWarning.style.display = 'none';
+        qtyInput.classList.remove('stock-exceeded');
+        return;
+      }
+
+      const isSale = document.getElementById('modalTxType')?.value === 'in';
+      const currentQty = parseFloat(qtyInput.value) || 0;
+      const ratio = parseFloat(row.querySelector('.item-unit-ratio')?.value) || 1;
+      const requiredBase = currentQty * ratio;
+
+      // Badge info stok
+      if (prod.stock <= 0) {
+        stockBadge.innerHTML = `<span class="text-danger font-bold">❌ Stok Gudang Habis (0 ${prod.unit})</span>`;
+      } else if (prod.hasMultiUnit && prod.packRatio > 1) {
+        stockBadge.innerHTML = `<span class="text-success font-semibold">📦 Sisa Stok: <strong>${prod.stock} ${prod.unit}</strong> (≈ ${(prod.stock / prod.packRatio).toFixed(1)} ${prod.packUnit})</span>`;
+      } else {
+        stockBadge.innerHTML = `<span class="text-success font-semibold">📦 Sisa Stok: <strong>${prod.stock} ${prod.unit}</strong></span>`;
+      }
+
+      // Validasi batas stok saat penjualan kasir
+      if (isSale && requiredBase > prod.stock) {
+        qtyInput.classList.add('stock-exceeded');
+        if (qtyWarning) {
+          qtyWarning.style.display = 'block';
+          qtyWarning.textContent = `⚠️ Kurang ${requiredBase - prod.stock} ${prod.unit}`;
+        }
+      } else {
+        qtyInput.classList.remove('stock-exceeded');
+        if (qtyWarning) qtyWarning.style.display = 'none';
+      }
+    };
 
     const updateUnitControl = (prod) => {
       if (!prod) {
         unitWrapper.innerHTML = `<input type="text" class="form-control item-unit" placeholder="Satuan" value="Pcs" />`;
         row.querySelector('.item-unit-ratio').value = 1;
+        validateAndRenderStock(null);
         return;
       }
 
@@ -1253,6 +1296,7 @@ class AppController {
           row.querySelector('.item-unit-ratio').value = opt.dataset.ratio || 1;
           row.querySelector('.item-price').value = opt.dataset.price || 0;
           row.querySelector('.item-cogs').value = opt.dataset.buy || 0;
+          validateAndRenderStock(prod);
           this.recalculateItemsTotal();
         });
       } else {
@@ -1261,6 +1305,7 @@ class AppController {
         row.querySelector('.item-price').value = prod.sellPrice;
         row.querySelector('.item-cogs').value = prod.buyPrice;
       }
+      validateAndRenderStock(prod);
       this.recalculateItemsTotal();
     };
 
@@ -1270,7 +1315,16 @@ class AppController {
       if (found) {
         row.querySelector('.item-product-id').value = found.id;
         updateUnitControl(found);
+      } else {
+        validateAndRenderStock(null);
       }
+    });
+
+    qtyInput.addEventListener('input', () => {
+      const prodId = row.querySelector('.item-product-id')?.value;
+      const prod = productsList.find(p => p.id === prodId);
+      validateAndRenderStock(prod);
+      this.recalculateItemsTotal();
     });
 
     row.querySelectorAll('input').forEach(inp => {
@@ -1284,8 +1338,15 @@ class AppController {
         row.querySelector('.item-unit-ratio').value = opt.dataset.ratio || 1;
         row.querySelector('.item-price').value = opt.dataset.price || 0;
         row.querySelector('.item-cogs').value = opt.dataset.buy || 0;
+        const prodId = row.querySelector('.item-product-id')?.value;
+        const prod = productsList.find(p => p.id === prodId);
+        validateAndRenderStock(prod);
         this.recalculateItemsTotal();
       });
+    }
+
+    if (matched) {
+      validateAndRenderStock(matched);
     }
 
     row.querySelector('.btn-remove-item').addEventListener('click', () => {
@@ -1982,7 +2043,10 @@ class AppController {
 
   // ==================== FORM ACTIONS ====================
   async handleSaveTransaction() {
+    const txType = document.getElementById('modalTxType').value;
     const items = [];
+    const stockErrors = [];
+
     document.querySelectorAll('#itemsBuilderContainer .items-builder-row').forEach(row => {
       const name = row.querySelector('.item-name')?.value.trim();
       const qty = parseFloat(row.querySelector('.item-qty')?.value) || 1;
@@ -1993,12 +2057,28 @@ class AppController {
       const cogs = parseFloat(row.querySelector('.item-cogs')?.value) || 0;
 
       if (name) {
+        const totalBaseQty = qty * unitRatio;
+
+        // Validasi stok khusus Penjualan Kasir (Mencegah Stok Minus)
+        if (txType === 'in') {
+          const product = this.inventory.products.find(p => (productId && p.id === productId) || p.name.toLowerCase() === name.toLowerCase());
+          if (product && totalBaseQty > product.stock) {
+            stockErrors.push(`• ${product.name}: Diminta ${qty} ${unit} (setara ${totalBaseQty} ${product.unit}), tapi sisa stok di gudang hanya ada ${product.stock} ${product.unit}.`);
+          }
+        }
+
         items.push({ id: productId, name, qty, unit, unitRatio, price, cogs, subtotal: qty * price });
       }
     });
 
+    // Batalkan penjualan jika ada barang yang melebihi sisa stok gudang
+    if (stockErrors.length > 0) {
+      alert(`❌ TRANSAKSI PENJUALAN GAGAL (STOK TIDAK MENCUKUPI):\n\n${stockErrors.join('\n\n')}\n\nSolusi: Silakan kurangi jumlah penjualan atau lakukan stok opname/kulakan terlebih dahulu.`);
+      return;
+    }
+
     const txData = {
-      type: document.getElementById('modalTxType').value,
+      type: txType,
       paymentMethod: document.getElementById('modalTxPaymentMethod').value,
       category: document.getElementById('modalTxCategory').value,
       date: document.getElementById('modalTxDate').value,
