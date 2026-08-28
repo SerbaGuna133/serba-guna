@@ -1410,11 +1410,7 @@ class AppController {
           ${productsList.map(p => {
             const codeTag = p.code || p.id;
             const packInfo = p.hasMultiUnit ? ` | 📦 1 ${p.packUnit}=${p.packRatio} ${p.unit}` : '';
-            return `
-              <option value="${p.name}">[${codeTag}] Stok: ${p.stock} ${p.unit}${packInfo} | ${this.store.formatRupiah(p.sellPrice)}</option>
-              <option value="${codeTag}">[${p.name}] Stok: ${p.stock} ${p.unit}${packInfo} | ${this.store.formatRupiah(p.sellPrice)}</option>
-              ${p.barcode && p.barcode !== codeTag ? `<option value="${p.barcode}">[${p.name}] Barcode</option>` : ''}
-            `;
+            return `<option value="${p.name}">[Kode: ${codeTag}] Stok: ${p.stock} ${p.unit}${packInfo} | ${this.store.formatRupiah(p.sellPrice)}</option>`;
           }).join('')}
         </datalist>
         <input type="hidden" class="item-product-id" value="${productId || (matched ? matched.id : '')}" />
