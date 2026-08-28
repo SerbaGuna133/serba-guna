@@ -225,11 +225,34 @@ class AppController {
   }
 
   updateStoreProfileHeader() {
-    const profile = this.store.storeProfile;
+    const profile = this.store.storeProfile || {};
+    const storeName = profile.name || 'TB. SERBA GUNA';
+    const storeTagline = profile.tagline || 'Pusat Bahan Bangunan & Akuntansi';
+
+    // Update Header Brand
     const nameEl = document.getElementById('headerStoreName');
     const taglineEl = document.getElementById('headerStoreTagline');
-    if (nameEl) nameEl.textContent = profile.name;
-    if (taglineEl) taglineEl.textContent = profile.tagline;
+    if (nameEl) nameEl.textContent = storeName;
+    if (taglineEl) taglineEl.textContent = storeTagline;
+
+    // Update Hero Title & Subtitle in Dashboard
+    const heroTitleEl = document.getElementById('heroTitle');
+    if (heroTitleEl) {
+      heroTitleEl.innerHTML = `<span>📊</span> Dashboard Akuntansi ${storeName}`;
+    }
+    const heroSubEl = document.getElementById('heroSubtitle');
+    if (heroSubEl && profile.tagline) {
+      heroSubEl.textContent = `${profile.tagline} — Sistem pembukuan berpasangan (Double-Entry), persediaan stok & laporan neraca.`;
+    }
+
+    // Update Document Title
+    document.title = `${storeName} - Sistem Akuntansi & Kasir`;
+
+    // Update Login Screen Brand if available
+    const loginTitleEl = document.querySelector('.login-store-title');
+    if (loginTitleEl) loginTitleEl.textContent = storeName;
+    const loginSubtitleEl = document.querySelector('.login-store-subtitle');
+    if (loginSubtitleEl && profile.tagline) loginSubtitleEl.textContent = profile.tagline;
   }
 
   updateCloudStatusBadge() {
@@ -382,6 +405,7 @@ class AppController {
 
   // ==================== VIEW 1: DASHBOARD ====================
   renderDashboard() {
+    this.updateStoreProfileHeader();
     const stats = this.store.getFinancialStats(this.selectedPeriod);
     const invVal = this.inventory ? this.inventory.getValuation() : { totalAssetValue: 0, lowStockCount: 0 };
 
