@@ -1399,8 +1399,12 @@ class AppController {
     const groupPaid = document.getElementById('groupSalePaidAmount');
     const groupDueDate = document.getElementById('groupSaleDueDate');
     const groupDebtCalc = document.getElementById('groupSaleDebtCalc');
+    const groupCash = document.getElementById('groupSaleCashTendered');
+    const groupChange = document.getElementById('groupSaleChangeDisplay');
 
     if (method === 'piutang') {
+      if (groupCash) groupCash.style.display = 'none';
+      if (groupChange) groupChange.style.display = 'none';
       if (groupPaid) groupPaid.style.display = 'block';
       if (groupDueDate) groupDueDate.style.display = 'block';
       if (groupDebtCalc) groupDebtCalc.style.display = 'block';
@@ -1411,6 +1415,8 @@ class AppController {
         dueInput.value = d.toISOString().split('T')[0];
       }
     } else {
+      if (groupCash) groupCash.style.display = 'block';
+      if (groupChange) groupChange.style.display = 'block';
       if (groupPaid) groupPaid.style.display = 'none';
       if (groupDueDate) groupDueDate.style.display = 'none';
       if (groupDebtCalc) groupDebtCalc.style.display = 'none';
@@ -1428,6 +1434,25 @@ class AppController {
       const debt = Math.max(0, totalAmount - dp);
       const debtEl = document.getElementById('saleDebtDisplay');
       if (debtEl) debtEl.textContent = this.store.formatRupiah(debt);
+    } else {
+      const tenderedInput = document.getElementById('saleTenderedAmount');
+      const changeDisplay = document.getElementById('saleChangeAmountDisplay');
+      const tendered = parseFloat(tenderedInput?.value) || 0;
+
+      if (!changeDisplay) return;
+
+      if (tendered <= 0) {
+        changeDisplay.textContent = 'Rp 0';
+        changeDisplay.className = 'font-bold text-muted';
+      } else if (tendered >= totalAmount) {
+        const kembalian = tendered - totalAmount;
+        changeDisplay.textContent = this.store.formatRupiah(kembalian);
+        changeDisplay.className = 'font-bold text-success';
+      } else {
+        const kurang = totalAmount - tendered;
+        changeDisplay.textContent = `⚠️ Kurang: ${this.store.formatRupiah(kurang)}`;
+        changeDisplay.className = 'font-bold text-danger';
+      }
     }
   }
 
@@ -2062,6 +2087,7 @@ class AppController {
     document.getElementById('btnAddSaleItemRow')?.addEventListener('click', () => this.addSaleItemRow());
     document.getElementById('salePaymentMethod')?.addEventListener('change', () => this.handleSalePaymentMethodChange());
     document.getElementById('saleTotalAmount')?.addEventListener('input', () => this.handleSaleAmountChange());
+    document.getElementById('saleTenderedAmount')?.addEventListener('input', () => this.handleSaleAmountChange());
     document.getElementById('saleDebtDP')?.addEventListener('input', () => this.handleSaleAmountChange());
     document.getElementById('formNewSale')?.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -2230,6 +2256,9 @@ class AppController {
     const primaryCategory = (items[0] && items[0].id) ? (this.inventory?.products.find(p => p.id === items[0].id)?.category || 'lainnya') : 'lainnya';
     const customer = document.getElementById('saleCustomerName')?.value.trim() || 'Pelanggan Umum';
 
+    const tendered = parseFloat(document.getElementById('saleTenderedAmount')?.value) || 0;
+    const change = (tendered >= totalAmount && method === 'cash') ? (tendered - totalAmount) : 0;
+
     const txData = {
       type: 'in',
       paymentMethod: method,
@@ -2241,6 +2270,8 @@ class AppController {
       phone: document.getElementById('saleCustomerPhone')?.value.trim() || '',
       amount: totalAmount,
       paidAmount: paidAmount,
+      tenderedAmount: tendered,
+      changeAmount: change,
       dueDate: document.getElementById('saleDueDate')?.value || '',
       notes: document.getElementById('saleNotes')?.value.trim() || '',
       items: items
