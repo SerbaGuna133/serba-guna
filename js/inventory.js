@@ -211,12 +211,6 @@ class InventoryStore {
 
   updateFromCloud(cloudProducts) {
     if (!cloudProducts || !Array.isArray(cloudProducts)) return;
-    if (cloudProducts.length === 0 && this.products.length > 0) {
-      if (window.firebaseService && window.firebaseService.isCloudActive) {
-        window.firebaseService.uploadLocalProducts(this.products);
-      }
-      return;
-    }
     this.products = cloudProducts;
     this.save();
   }

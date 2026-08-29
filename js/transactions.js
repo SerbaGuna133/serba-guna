@@ -533,12 +533,6 @@ class TransactionStore {
 
   updateFromCloud(cloudTransactions) {
     if (!cloudTransactions || !Array.isArray(cloudTransactions)) return;
-    if (cloudTransactions.length === 0 && this.transactions.length > 0) {
-      if (window.firebaseService && window.firebaseService.isCloudActive) {
-        window.firebaseService.uploadLocalBatch(this.transactions);
-      }
-      return;
-    }
     this.transactions = cloudTransactions;
     this.persistLocal();
   }

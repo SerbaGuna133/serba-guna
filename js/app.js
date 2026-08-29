@@ -2917,24 +2917,25 @@ class AppController {
 
     document.getElementById('btnClearAllData')?.addEventListener('click', async () => {
       if (confirm("⚠️ PERINGATAN: Apakah Anda yakin ingin MENGOSONGKAN SELURUH DATA (Transaksi, Stok Barang, dan Saldo Akuntansi) menjadi 0 (NOL/BERSIH)?")) {
+        // 1. Kosongkan local storage
         this.store.clearAllData();
         if (this.inventory) this.inventory.clearAllData();
         if (this.accounting) this.accounting.clearAllData();
 
-        if (this.firebase && this.firebase.isCloudActive && this.firebase.db) {
-          try {
-            const snapshot = await this.firebase.db.collection(this.firebase.collectionName).get();
-            const batch = this.firebase.db.batch();
-            snapshot.forEach(doc => batch.delete(doc.ref));
-            await batch.commit();
-          } catch (e) {
-            console.warn("Gagal bersihkan cloud:", e);
-          }
+        // 2. Kosongkan Cloud Firestore (Transaksi & Master Barang)
+        if (this.firebase && this.firebase.isCloudActive) {
+          await this.firebase.clearAllCloudData();
         }
 
+        // 3. Render ulang seluruh view agar menjadi 0 bersih
         this.populateCOAOptions();
+        this.renderInventoryView();
+        this.renderTransactionsTable();
+        this.renderReceivablesView();
+        this.renderPayablesView();
+        this.renderAccountingViews();
         this.refreshCurrentView();
-        this.showToast("Semua data transaksi, stok & akuntansi telah dikosongkan (NOL)!", "success");
+        this.showToast("Semua data transaksi, stok & akuntansi telah dikosongkan (NOL BERSIH)!", "success");
       }
     });
 

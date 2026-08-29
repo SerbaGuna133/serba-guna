@@ -321,6 +321,28 @@ class FirebaseService {
       return false;
     }
   }
+
+  async clearAllCloudData() {
+    if (!this.isCloudActive || !this.db) return false;
+    try {
+      // 1. Hapus semua transaksi dari Cloud Firestore
+      const txSnap = await this.db.collection(this.collectionName).get();
+      const batch1 = this.db.batch();
+      txSnap.forEach(doc => batch1.delete(doc.ref));
+      await batch1.commit();
+
+      // 2. Hapus semua master barang dari Cloud Firestore
+      const prodSnap = await this.db.collection(this.productsCollectionName).get();
+      const batch2 = this.db.batch();
+      prodSnap.forEach(doc => batch2.delete(doc.ref));
+      await batch2.commit();
+
+      return true;
+    } catch (e) {
+      console.warn("Gagal membersihkan database Cloud Firebase:", e);
+      return false;
+    }
+  }
 }
 
 // Global Singleton Instance
