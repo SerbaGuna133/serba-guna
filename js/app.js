@@ -2444,6 +2444,23 @@ class AppController {
     }
   }
 
+  async deleteTransaction(txId) {
+    if (confirm(`Apakah Anda yakin ingin menghapus transaksi ${txId}?`)) {
+      try {
+        await this.store.deleteTransaction(txId);
+        this.renderTransactionsTable();
+        this.renderReceivablesView();
+        this.renderPayablesView();
+        this.renderAccountingViews();
+        this.renderDashboard();
+        this.refreshCurrentView();
+        this.showToast(`Transaksi ${txId} berhasil dihapus!`);
+      } catch (err) {
+        alert("Gagal menghapus transaksi: " + err.message);
+      }
+    }
+  }
+
   // 3. Modal Tambah / Edit Akun COA
   openNewCOAModal() {
     this.editingCOACode = null;
