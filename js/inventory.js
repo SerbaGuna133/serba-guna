@@ -145,6 +145,8 @@ class InventoryStore {
       unit: (data.unit || "Pcs").trim(),
       buyPrice: baseBuyPrice,
       sellPrice: Number(data.sellPrice) || 0,
+      craftsmanPrice: Number(data.craftsmanPrice) || 0,
+      projectPrice: Number(data.projectPrice) || 0,
       hasMultiUnit: hasMultiUnit,
       packUnit: hasMultiUnit ? (data.packUnit || "Dus").trim() : "",
       packRatio: packRatio,
@@ -340,6 +342,37 @@ class InventoryStore {
     });
 
     this.save();
+  }
+
+  getProductPrice(product, tier = 'retail') {
+    if (!product) return 0;
+    const retail = Number(product.sellPrice) || 0;
+    if (tier === 'craftsman') {
+      const cPrice = Number(product.craftsmanPrice) || 0;
+      return cPrice > 0 ? cPrice : Math.round(retail * 0.95);
+    }
+    if (tier === 'project') {
+      const pPrice = Number(product.projectPrice) || 0;
+      return pPrice > 0 ? pPrice : Math.round(retail * 0.90);
+    }
+    return retail;
+  }
+
+  addStockFromReturn(productId, qty, returnReason = "Retur Barang Sisa Proyek") {
+    const product = this.products.find(p => p.id === productId || p.name.toLowerCase() === (productId || '').toLowerCase());
+    if (!product) return false;
+    const addQty = parseFloat(qty) || 0;
+    if (addQty <= 0) return false;
+
+    product.stock += addQty;
+    product.updatedAt = new Date().toISOString();
+    this.logStockMovement(product.id, addQty, 'in', returnReason);
+    this.save();
+
+    if (window.firebaseService && window.firebaseService.isCloudActive) {
+      window.firebaseService.saveProduct(product);
+    }
+    return true;
   }
 
   logStockMovement(productId, qty, type, note) {

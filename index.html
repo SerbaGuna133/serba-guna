@@ -530,6 +530,10 @@
             <option value="overdue">⚠️ Lewat Jatuh Tempo</option>
             <option value="all">Semua Riwayat Piutang</option>
           </select>
+          <div class="btn-group" style="display: flex; gap: 4px;">
+            <button type="button" class="btn btn-sm btn-primary" id="btnRecViewCards" onclick="window.app && window.app.switchReceivablesViewMode('cards')">📋 Per Nota</button>
+            <button type="button" class="btn btn-sm btn-outline" id="btnRecViewProjects" onclick="window.app && window.app.switchReceivablesViewMode('projects')">🏢 Rekap Per Proyek</button>
+          </div>
         </div>
         <div class="filter-right">
           <button class="btn btn-primary btn-sm" onclick="window.app.openNewTransactionModal('in', 'piutang')">
@@ -539,6 +543,23 @@
       </div>
 
       <div class="debt-cards-grid" id="receivablesGrid"></div>
+      <div id="receivablesProjectsWrap" style="display: none;" class="table-responsive">
+        <table class="data-table" id="tableProjectBilling">
+          <thead>
+            <tr>
+              <th>Nama Proyek / Lokasi</th>
+              <th>Nama Pelanggan / Mandor</th>
+              <th>No. WhatsApp</th>
+              <th>Jml Nota</th>
+              <th class="text-right">Total Material Terkirim</th>
+              <th class="text-right">Sudah Dibayar</th>
+              <th class="text-right">Sisa Tagihan (Bon)</th>
+              <th class="text-center">Aksi Rekap</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyProjectBilling"></tbody>
+        </table>
+      </div>
     </section>
 
     <!-- ==========================================
@@ -1024,8 +1045,13 @@
   <div class="modal-backdrop" id="modalNewSale">
     <div class="modal-content modal-lg">
       <div class="modal-header">
-        <h3 class="modal-title">🛒 Penjualan Barang (Kas Masuk)</h3>
-        <button class="btn-icon-only" onclick="window.app.closeModal('modalNewSale')">✕</button>
+        <h3 class="modal-title" id="modalSaleTitle">🛒 Kasir Penjualan Material</h3>
+        <div class="d-flex align-center gap-2">
+          <button type="button" class="btn btn-outline btn-sm" onclick="window.app && window.app.openSalesReturnModal()" title="Retur Barang Sisa Proyek / Nota Sebelumnya" style="border-color: var(--warning); color: var(--warning);">
+            <span>🔄</span> Retur Barang Sisa
+          </button>
+          <button class="btn-icon-only" onclick="window.app.closeModal('modalNewSale')">✕</button>
+        </div>
       </div>
       <form id="formNewSale">
         <div class="modal-body">
@@ -1053,6 +1079,22 @@
               <label class="form-label">No. Telp / WA (Opsional):</label>
               <input type="text" id="saleCustomerPhone" class="form-control" placeholder="0812-xxxx-xxxx" />
             </div>
+
+            <div class="form-group">
+              <label class="form-label font-bold text-info">🏢 Nama Proyek / Lokasi Kirim (Opsional):</label>
+              <input type="text" id="saleProjectName" class="form-control" placeholder="Contoh: Proyek Ruko A / Renovasi Rumah Pak Budi" />
+            </div>
+          </div>
+
+          <!-- Multi-Tier Price Switcher (Tingkat Harga Pembeli) -->
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; background: var(--bg-subtle); padding: 0.55rem 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-top: 0.5rem; margin-bottom: 0.5rem;">
+            <span style="font-size: 0.8rem; font-weight: 800; color: var(--text-main);">🏷️ Tingkatan Harga Kasir:</span>
+            <div class="btn-group" id="posPriceTierGroup" style="display: flex; gap: 4px;">
+              <button type="button" class="btn btn-xs btn-primary pos-tier-btn active" data-tier="retail" onclick="window.app && window.app.switchPOSPriceTier('retail')">🟢 Eceran / Umum</button>
+              <button type="button" class="btn btn-xs btn-outline pos-tier-btn" data-tier="craftsman" onclick="window.app && window.app.switchPOSPriceTier('craftsman')">🔵 Tukang / Mitra 🔨</button>
+              <button type="button" class="btn btn-xs btn-outline pos-tier-btn" data-tier="project" onclick="window.app && window.app.switchPOSPriceTier('project')">🟣 Proyek / Grosir 🏗️</button>
+            </div>
+            <input type="hidden" id="salePriceTier" value="retail" />
           </div>
 
           <!-- Quick Barcode Scanner / SKU Search Bar -->
@@ -1366,6 +1408,20 @@
             <div class="form-group">
               <label class="form-label">Harga Jual Kasir Eceran (Rp):</label>
               <input type="number" id="modalProdSellPrice" class="form-control font-bold text-success" min="0" step="100" placeholder="0" required />
+            </div>
+          </div>
+
+          <!-- Tingkatan Harga Multi-Tier (Tukang & Proyek) -->
+          <div class="form-grid" style="margin-top: -0.5rem; margin-bottom: 0.75rem;">
+            <div class="form-group">
+              <label class="form-label" style="font-size: 0.78rem;">Harga Khusus Tukang / Mitra 🔨 (Rp):</label>
+              <input type="number" id="modalProdCraftsmanPrice" class="form-control" min="0" step="100" placeholder="Opsional (Otomatis diskon 5% jika kosong)" />
+              <small class="text-xs text-muted">Untuk langganan tukang / mandor</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size: 0.78rem;">Harga Khusus Proyek / Grosir 🏗️ (Rp):</label>
+              <input type="number" id="modalProdProjectPrice" class="form-control" min="0" step="100" placeholder="Opsional (Otomatis diskon 10% jika kosong)" />
+              <small class="text-xs text-muted">Untuk kontraktor / partai besar</small>
             </div>
           </div>
 
@@ -1760,6 +1816,107 @@
         <button type="button" class="btn btn-outline" onclick="window.app.closeModal('modalReportPreview')">Tutup</button>
         <button type="button" class="btn btn-primary" onclick="window.print()">🖨️ Cetak / Simpan PDF</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 8A. MODAL REKAP FAKTUR PROYEK & KIRIM WA -->
+  <div class="modal-backdrop" id="modalProjectBillingStatement">
+    <div class="modal-content modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalProjectStatementTitle">🏢 Rekap Faktur Tagihan Proyek</h3>
+        <div class="d-flex align-center gap-2">
+          <button type="button" class="btn btn-outline btn-sm" id="btnSendProjectWA" style="color: #25d366; border-color: #25d366;" title="Kirim Rekap Tagihan via WhatsApp">
+            <span>💬</span> Kirim WA Proyek
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="window.app && window.app.printProjectStatementDoc()" title="Cetak Surat Tagihan Proyek A4">
+            <span>🖨️</span> Cetak Rekap Proyek
+          </button>
+          <button class="btn-icon-only" onclick="window.app.closeModal('modalProjectBillingStatement')">✕</button>
+        </div>
+      </div>
+      <div class="modal-body" id="projectStatementContent" style="padding: 1.5rem; overflow-y: auto; max-height: 70vh;">
+        <!-- Injected via JS -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="window.app.closeModal('modalProjectBillingStatement')">Tutup</button>
+        <button type="button" class="btn btn-primary" onclick="window.app && window.app.printProjectStatementDoc()">🖨️ Cetak Dokumen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8B. MODAL RETUR PENJUALAN / SISA MATERIAL -->
+  <div class="modal-backdrop" id="modalSalesReturn">
+    <div class="modal-content modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title">🔄 Retur Barang Sisa Proyek & Penyesuaian Dana</h3>
+        <button class="btn-icon-only" onclick="window.app.closeModal('modalSalesReturn')">✕</button>
+      </div>
+      <form id="formSalesReturn">
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Tanggal Retur:</label>
+              <input type="date" id="returnDate" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">No. Nota Asli Penjualan (Opsional):</label>
+              <input type="text" id="returnOriginalTxId" class="form-control font-mono" placeholder="Contoh: TX-20260829-1001" />
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Nama Pelanggan / Mandor:</label>
+              <input type="text" id="returnCustomerName" class="form-control" placeholder="Contoh: Pak Haji Bambang" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nama Proyek (Opsional):</label>
+              <input type="text" id="returnProjectName" class="form-control" placeholder="Contoh: Proyek Ruko A" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label font-bold">Metode Pengembalian Nilai Retur:</label>
+            <select id="returnRefundMethod" class="form-control font-bold" required>
+              <option value="piutang">📑 Potong Sisa Bon Piutang Pelanggan (Kurangi Hutang Proyek)</option>
+              <option value="cash">💵 Kembalikan Uang Tunai Kasir</option>
+              <option value="transfer">💳 Transfer Balik Rekening Bank</option>
+            </select>
+          </div>
+
+          <!-- Rincian Barang yang Diretur -->
+          <div class="form-group">
+            <div class="d-flex align-center justify-between mb-1">
+              <label class="form-label font-bold" style="margin-bottom: 0;">Barang yang Dikembalikan ke Gudang (Stok Otomatis Bertambah):</label>
+              <button type="button" class="btn btn-outline btn-sm" id="btnAddReturnItemRow">
+                <span>➕</span> Tambah Barang Retur
+              </button>
+            </div>
+            <div class="items-builder-wrap" id="returnItemsContainer"></div>
+          </div>
+
+          <!-- Total Nilai Retur -->
+          <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+            <div>
+              <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted);">Total Nilai Retur Pengembalian:</div>
+              <div id="returnTotalDisplay" class="font-bold text-danger" style="font-size: 1.35rem; margin-top: 0.15rem;">Rp 0</div>
+            </div>
+            <div class="badge badge-warning" style="font-size: 0.85rem; padding: 0.45rem 0.85rem;">
+              📦 Stok otomatis bertambah masuk gudang
+            </div>
+          </div>
+
+          <div class="form-group mt-3">
+            <label class="form-label">Alasan / Catatan Retur:</label>
+            <input type="text" id="returnReasonNote" class="form-control" placeholder="Contoh: Sisa material proyek tidak terpakai / Kondisi utuh" />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="window.app.closeModal('modalSalesReturn')">Batal</button>
+          <button type="submit" class="btn btn-danger">💾 Simpan Retur & Masukkan Stok ke Gudang</button>
+        </div>
+      </form>
     </div>
   </div>
 

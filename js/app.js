@@ -688,67 +688,448 @@ class AppController {
 
     if (list.length === 0) {
       container.innerHTML = `<div class="card text-center text-muted" style="grid-column: 1 / -1; padding: 3rem;">Tidak ada data piutang bon yang cocok.</div>`;
+    } else {
+      container.innerHTML = list.map(tx => {
+        const isOverdue = tx.debtAmount > 0 && tx.dueDate && tx.dueDate < today;
+        const pctPaid = tx.amount > 0 ? Math.min(100, ((tx.paidAmount / tx.amount) * 100)).toFixed(0) : 0;
+
+        return `
+          <div class="debt-card ${isOverdue ? 'accent-red' : ''}">
+            <div>
+              <div class="debt-card-header">
+                <div>
+                  <div class="debt-customer-name">👤 ${tx.customer || 'Pelanggan Tanpa Nama'}</div>
+                  <div class="debt-project-title">${tx.title}</div>
+                  ${tx.projectName ? `<div class="text-xs font-bold text-info mt-1">🏢 Proyek: ${tx.projectName}</div>` : ''}
+                  ${tx.phone ? `<div class="text-xs text-muted mt-1">📞 Telp: ${tx.phone}</div>` : ''}
+                </div>
+                <span class="badge ${tx.debtAmount === 0 ? 'badge-success' : isOverdue ? 'badge-danger' : 'badge-warning'}">
+                  ${tx.debtAmount === 0 ? 'LUNAS' : isOverdue ? 'JATUH TEMPO' : 'BELUM LUNAS'}
+                </span>
+              </div>
+
+              <div class="debt-amounts-box mt-3">
+                <div>
+                  <div class="amount-item-label">Total Bon</div>
+                  <div class="amount-item-val">${this.store.formatRupiah(tx.amount)}</div>
+                </div>
+                <div>
+                  <div class="amount-item-label">Sisa Tagihan</div>
+                  <div class="amount-item-val ${tx.debtAmount > 0 ? 'text-danger' : 'text-success'}">${this.store.formatRupiah(tx.debtAmount)}</div>
+                </div>
+                <div style="grid-column: span 2;">
+                  <div class="d-flex justify-between text-xs text-muted">
+                    <span>Sudah Dibayar: ${this.store.formatRupiah(tx.paidAmount)}</span>
+                    <span>${pctPaid}%</span>
+                  </div>
+                  <div class="progress-bar-wrap">
+                    <div class="progress-bar-fill" style="width: ${pctPaid}%;"></div>
+                  </div>
+                </div>
+              </div>
+
+              ${tx.dueDate ? `
+                <div class="debt-due-alert mt-2 ${isOverdue ? 'text-danger' : 'text-muted'}">
+                  📅 Jatuh Tempo: ${this.store.formatDateIndo(tx.dueDate)} ${isOverdue ? '<strong>(JATUH TEMPO!)</strong>' : ''}
+                </div>
+              ` : ''}
+            </div>
+
+            <div class="debt-card-actions">
+              ${tx.debtAmount > 0 ? `
+                <button class="btn btn-success btn-sm flex-1" onclick="window.app.openRepaymentModal('${tx.id}')">
+                  💵 Bayar Cicilan
+                </button>
+              ` : ''}
+              <button class="btn btn-outline btn-sm" onclick="window.app.openReceiptModal('${tx.id}')" title="Cetak Faktur">
+                🖨️ Cetak Faktur
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    this.renderProjectBillingView();
+  }
+
+  switchReceivablesViewMode(mode = 'cards') {
+    const cardsWrap = document.getElementById('receivablesGrid');
+    const projWrap = document.getElementById('receivablesProjectsWrap');
+    const btnCards = document.getElementById('btnRecViewCards');
+    const btnProj = document.getElementById('btnRecViewProjects');
+
+    if (mode === 'projects') {
+      if (cardsWrap) cardsWrap.style.display = 'none';
+      if (projWrap) projWrap.style.display = 'block';
+      if (btnCards) { btnCards.classList.remove('btn-primary'); btnCards.classList.add('btn-outline'); }
+      if (btnProj) { btnProj.classList.add('btn-primary'); btnProj.classList.remove('btn-outline'); }
+      this.renderProjectBillingView();
+    } else {
+      if (cardsWrap) cardsWrap.style.display = 'grid';
+      if (projWrap) projWrap.style.display = 'none';
+      if (btnCards) { btnCards.classList.add('btn-primary'); btnCards.classList.remove('btn-outline'); }
+      if (btnProj) { btnProj.classList.remove('btn-primary'); btnProj.classList.add('btn-outline'); }
+    }
+  }
+
+  renderProjectBillingView() {
+    const tbody = document.getElementById('tbodyProjectBilling');
+    if (!tbody) return;
+
+    const projectList = this.store ? this.store.getProjectBillingList() : [];
+    if (projectList.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted">Belum ada data bon piutang proyek yang tercatat.</td></tr>`;
       return;
     }
 
-    container.innerHTML = list.map(tx => {
-      const isOverdue = tx.debtAmount > 0 && tx.dueDate && tx.dueDate < today;
-      const pctPaid = tx.amount > 0 ? Math.min(100, ((tx.paidAmount / tx.amount) * 100)).toFixed(0) : 0;
+    tbody.innerHTML = projectList.map(proj => {
+      const encodedKey = encodeURIComponent(proj.key);
 
       return `
-        <div class="debt-card ${isOverdue ? 'accent-red' : ''}">
-          <div>
-            <div class="debt-card-header">
-              <div>
-                <div class="debt-customer-name">👤 ${tx.customer || 'Pelanggan Tanpa Nama'}</div>
-                <div class="debt-project-title">${tx.title}</div>
-                ${tx.phone ? `<div class="text-xs text-muted mt-1">📞 Telp: ${tx.phone}</div>` : ''}
-              </div>
-              <span class="badge ${tx.debtAmount === 0 ? 'badge-success' : isOverdue ? 'badge-danger' : 'badge-warning'}">
-                ${tx.debtAmount === 0 ? 'LUNAS' : isOverdue ? 'JATUH TEMPO' : 'BELUM LUNAS'}
-              </span>
+        <tr>
+          <td><strong class="text-primary font-bold">🏢 ${proj.projectName}</strong></td>
+          <td><strong>${proj.customer}</strong></td>
+          <td>${proj.phone ? `<span class="badge badge-emerald">📞 ${proj.phone}</span>` : '<span class="text-muted">-</span>'}</td>
+          <td><span class="badge badge-blue">${proj.invoices.length} Nota</span></td>
+          <td class="text-right font-semibold">${this.store.formatRupiah(proj.totalBilling)}</td>
+          <td class="text-right text-success font-semibold">${this.store.formatRupiah(proj.totalPaid)}</td>
+          <td class="text-right font-bold text-danger" style="font-size: 0.95rem;">${this.store.formatRupiah(proj.totalRemainingDebt)}</td>
+          <td class="text-center">
+            <div class="d-flex justify-center gap-1">
+              <button class="btn btn-primary btn-xs" onclick="window.app && window.app.openProjectBillingStatementModal('${encodedKey}')" title="Buka Rekap Faktur Gabungan & Cetak">
+                📄 Cetak Rekap
+              </button>
+              <button class="btn btn-outline btn-xs" style="color: #25d366; border-color: #25d366;" onclick="window.app && window.app.sendProjectBillingWA('${encodedKey}')" title="Kirim Tagihan via WhatsApp">
+                💬 WA
+              </button>
             </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
 
-            <div class="debt-amounts-box mt-3">
-              <div>
-                <div class="amount-item-label">Total Bon</div>
-                <div class="amount-item-val">${this.store.formatRupiah(tx.amount)}</div>
-              </div>
-              <div>
-                <div class="amount-item-label">Sisa Tagihan</div>
-                <div class="amount-item-val ${tx.debtAmount > 0 ? 'text-danger' : 'text-success'}">${this.store.formatRupiah(tx.debtAmount)}</div>
-              </div>
-              <div style="grid-column: span 2;">
-                <div class="d-flex justify-between text-xs text-muted">
-                  <span>Sudah Dibayar: ${this.store.formatRupiah(tx.paidAmount)}</span>
-                  <span>${pctPaid}%</span>
-                </div>
-                <div class="progress-bar-wrap">
-                  <div class="progress-bar-fill" style="width: ${pctPaid}%;"></div>
-                </div>
-              </div>
+  openProjectBillingStatementModal(encodedKey) {
+    const key = decodeURIComponent(encodedKey);
+    const projectList = this.store ? this.store.getProjectBillingList() : [];
+    const proj = projectList.find(p => p.key === key);
+    if (!proj) {
+      alert("Data proyek tidak ditemukan.");
+      return;
+    }
+
+    this.currentViewingProject = proj;
+    const titleEl = document.getElementById('modalProjectStatementTitle');
+    if (titleEl) titleEl.textContent = `🏢 Rekap Tagihan: ${proj.projectName} (${proj.customer})`;
+
+    const contentEl = document.getElementById('projectStatementContent');
+    if (contentEl) {
+      const storeProfile = this.storeProfile || { name: 'TB. SERBA GUNA', phone: '0812-3456-7890', address: 'Jl. Raya Bahan Bangunan No. 1' };
+
+      let invoicesRowsHTML = '';
+      proj.invoices.forEach((tx, idx) => {
+        const itemsSummary = Array.isArray(tx.items) && tx.items.length > 0
+          ? tx.items.map(it => `${it.name} (${it.qty} ${it.unit || 'pcs'})`).join(', ')
+          : tx.title;
+
+        invoicesRowsHTML += `
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 6px 8px; font-family: monospace;">${tx.id}</td>
+            <td style="padding: 6px 8px;">${tx.date}</td>
+            <td style="padding: 6px 8px;">${itemsSummary}</td>
+            <td style="padding: 6px 8px; text-align: right;">${this.store.formatRupiah(tx.amount)}</td>
+            <td style="padding: 6px 8px; text-align: right; color: #10b981;">${this.store.formatRupiah(tx.paidAmount)}</td>
+            <td style="padding: 6px 8px; text-align: right; font-weight: bold; color: #ef4444;">${this.store.formatRupiah(tx.debtAmount)}</td>
+          </tr>
+        `;
+      });
+
+      contentEl.innerHTML = `
+        <div id="projectStatementPrintDoc" style="background: #ffffff; color: #1e293b; padding: 25px; border-radius: 8px; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.5; font-size: 13px;">
+          <!-- Header Toko -->
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 15px;">
+            <div>
+              <h2 style="margin: 0; font-size: 20px; font-weight: 800; color: #0f172a;">${storeProfile.name}</h2>
+              <div style="font-size: 12px; color: #64748b;">${storeProfile.address || 'Pusat Material & Alat Bangunan'} | Telp/WA: ${storeProfile.phone || '-'}</div>
             </div>
-
-            ${tx.dueDate ? `
-              <div class="debt-due-alert mt-2 ${isOverdue ? 'text-danger' : 'text-muted'}">
-                📅 Jatuh Tempo: ${this.store.formatDateIndo(tx.dueDate)} ${isOverdue ? '<strong>(JATUH TEMPO!)</strong>' : ''}
-              </div>
-            ` : ''}
+            <div style="text-align: right;">
+              <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #2563eb;">REKAP TAGIHAN PROYEK</h3>
+              <div style="font-size: 11px; color: #64748b;">Tanggal Cetak: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+            </div>
           </div>
 
-          <div class="debt-card-actions">
-            ${tx.debtAmount > 0 ? `
-              <button class="btn btn-success btn-sm flex-1" onclick="window.app.openRepaymentModal('${tx.id}')">
-                💵 Bayar Cicilan
-              </button>
-            ` : ''}
-            <button class="btn btn-outline btn-sm" onclick="window.app.openReceiptModal('${tx.id}')" title="Cetak Faktur">
-              🖨️ Cetak Faktur
-            </button>
+          <!-- Info Pelanggan & Proyek -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: #f8fafc; padding: 12px 15px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #e2e8f0;">
+            <div>
+              <div style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: bold;">Ditagihkan Kepada:</div>
+              <div style="font-size: 14px; font-weight: bold; color: #0f172a;">${proj.customer}</div>
+              <div style="font-size: 12px; color: #475569;">No. Telepon / WA: ${proj.phone || '-'}</div>
+            </div>
+            <div>
+              <div style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: bold;">Nama Proyek / Lokasi:</div>
+              <div style="font-size: 14px; font-weight: bold; color: #2563eb;">🏢 ${proj.projectName}</div>
+              <div style="font-size: 12px; color: #475569;">Total Pengiriman: ${proj.invoices.length} Faktur / Nota</div>
+            </div>
+          </div>
+
+          <!-- Tabel Rincian Nota -->
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 12px;">
+            <thead>
+              <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1; text-align: left;">
+                <th style="padding: 8px;">No. Nota</th>
+                <th style="padding: 8px;">Tanggal</th>
+                <th style="padding: 8px;">Rincian Material</th>
+                <th style="padding: 8px; text-align: right;">Total Nilai</th>
+                <th style="padding: 8px; text-align: right;">Terbayar</th>
+                <th style="padding: 8px; text-align: right;">Sisa Bon</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${invoicesRowsHTML}
+            </tbody>
+          </table>
+
+          <!-- Ringkasan Total Tagihan -->
+          <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+            <div style="width: 280px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>Total Kirim Material:</span>
+                <strong>${this.store.formatRupiah(proj.totalBilling)}</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: #10b981;">
+                <span>Total Sudah Bayar (DP):</span>
+                <strong>${this.store.formatRupiah(proj.totalPaid)}</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; border-top: 2px solid #0f172a; padding-top: 6px; font-size: 15px; font-weight: 800; color: #ef4444;">
+                <span>SISA TOTAL TAGIHAN:</span>
+                <span>${this.store.formatRupiah(proj.totalRemainingDebt)}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer Tanda Tangan -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 30px; text-align: center; font-size: 12px;">
+            <div>
+              <div>Penerima / Mandor Proyek</div>
+              <div style="height: 55px;"></div>
+              <div style="font-weight: bold; border-top: 1px dashed #94a3b8; width: 160px; margin: 0 auto; padding-top: 3px;">(${proj.customer})</div>
+            </div>
+            <div>
+              <div>Hormat Kami, ${storeProfile.name}</div>
+              <div style="height: 55px;"></div>
+              <div style="font-weight: bold; border-top: 1px dashed #94a3b8; width: 160px; margin: 0 auto; padding-top: 3px;">( Bagian Kasir / Toko )</div>
+            </div>
           </div>
         </div>
       `;
-    }).join('');
+    }
+
+    const btnWA = document.getElementById('btnSendProjectWA');
+    if (btnWA) {
+      btnWA.onclick = () => this.sendProjectBillingWA(encodedKey);
+    }
+
+    this.openModal('modalProjectBillingStatement');
+  }
+
+  sendProjectBillingWA(encodedKey) {
+    const key = decodeURIComponent(encodedKey);
+    const projectList = this.store ? this.store.getProjectBillingList() : [];
+    const proj = projectList.find(p => p.key === key);
+    if (!proj) return;
+
+    const storeName = (this.storeProfile && this.storeProfile.name) || 'TB. SERBA GUNA';
+    let phone = (proj.phone || '').replace(/[^0-9]/g, '');
+    if (phone.startsWith('0')) phone = '62' + phone.substring(1);
+
+    const text = `Halo Bapak/Ibu *${proj.customer}*,\n\nBerikut kami sampaikan rincian rekapitulasi tagihan material untuk *${proj.projectName}* dari *${storeName}*:\n\n` +
+      `📦 *Total Pengiriman*: ${proj.invoices.length} Faktur/Nota\n` +
+      `💵 *Total Nilai Material*: ${this.store.formatRupiah(proj.totalBilling)}\n` +
+      `✅ *Total Sudah Dibayar*: ${this.store.formatRupiah(proj.totalPaid)}\n` +
+      `🔴 *SISA TAGIHAN (BON)*: *${this.store.formatRupiah(proj.totalRemainingDebt)}*\n\n` +
+      `Mohon untuk dapat dilakukan konfirmasi pelunasan. Terima kasih atas kerja samanya! 🙏🏗️`;
+
+    const waUrl = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(waUrl, '_blank');
+  }
+
+  printProjectStatementDoc() {
+    const printContent = document.getElementById('projectStatementPrintDoc');
+    if (!printContent) {
+      window.print();
+      return;
+    }
+    const win = window.open('', '', 'width=900,height=650');
+    win.document.write(`
+      <html>
+        <head>
+          <title>Rekap Tagihan Proyek</title>
+          <style>
+            body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; color: #1e293b; }
+            @media print {
+              body { margin: 0; padding: 0; }
+              @page { size: A4 portrait; margin: 15mm; }
+            }
+          </style>
+        </head>
+        <body>
+          ${printContent.outerHTML}
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          <\/script>
+        </body>
+      </html>
+    `);
+    win.document.close();
+  }
+
+  // ==================== SALES RETURN (RETUR BARANG SISA PROYEK) ====================
+  openSalesReturnModal() {
+    const form = document.getElementById('formSalesReturn');
+    if (form) form.reset();
+
+    const dateInput = document.getElementById('returnDate');
+    if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+
+    const container = document.getElementById('returnItemsContainer');
+    if (container) container.innerHTML = '';
+
+    this.addReturnItemRow();
+    this.recalculateReturnTotal();
+    this.openModal('modalSalesReturn');
+  }
+
+  addReturnItemRow(name = '', qty = 1, price = 0, productId = '') {
+    const container = document.getElementById('returnItemsContainer');
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.className = 'items-builder-row';
+
+    const productsList = this.inventory ? this.inventory.products : [];
+    const datalistId = `dl-ret-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+
+    const matched = productsList.find(p => (productId && p.id === productId) || (name && p.name.toLowerCase() === name.toLowerCase()));
+
+    row.innerHTML = `
+      <div>
+        <input type="text" list="${datalistId}" class="form-control ret-item-name" placeholder="Ketik / pilih barang yang diretur..." value="${name}" required />
+        <datalist id="${datalistId}">
+          ${productsList.map(p => `<option value="${p.name}">[${p.code || p.id}] Sisa Gudang: ${p.stock} ${p.unit} | Harga: ${this.store.formatRupiah(p.sellPrice)}</option>`).join('')}
+        </datalist>
+        <input type="hidden" class="ret-item-product-id" value="${productId || (matched ? matched.id : '')}" />
+        <div class="ret-item-hint text-xs text-muted"></div>
+      </div>
+      <div>
+        <input type="number" class="form-control ret-item-qty" placeholder="Qty" value="${qty}" min="0.1" step="any" required />
+      </div>
+      <div>
+        <input type="text" class="form-control ret-item-unit" placeholder="Satuan" value="${matched ? matched.unit : 'Pcs'}" readonly style="background: var(--bg-subtle);" />
+      </div>
+      <input type="text" class="form-control ret-item-price" placeholder="Harga Pengembalian (Rp)" value="${price > 0 ? this.store.formatRupiah(price) : (matched ? this.store.formatRupiah(matched.sellPrice) : 'Rp 0')}" data-raw-value="${price > 0 ? price : (matched ? matched.sellPrice : 0)}" required />
+      <button type="button" class="btn-icon-only text-danger btn-remove-ret-item" title="Hapus Baris" style="margin-top: 5px;">✕</button>
+    `;
+
+    const nameInput = row.querySelector('.ret-item-name');
+    const qtyInput = row.querySelector('.ret-item-qty');
+    const priceInput = row.querySelector('.ret-item-price');
+    const unitInput = row.querySelector('.ret-item-unit');
+
+    nameInput.addEventListener('input', (e) => {
+      const val = e.target.value.trim();
+      const found = productsList.find(p => p.name.toLowerCase() === val.toLowerCase() || (p.code && p.code.toLowerCase() === val.toLowerCase()));
+      if (found) {
+        nameInput.value = found.name;
+        row.querySelector('.ret-item-product-id').value = found.id;
+        unitInput.value = found.unit;
+        priceInput.value = this.store.formatRupiah(found.sellPrice);
+        priceInput.dataset.rawValue = found.sellPrice;
+      }
+      this.recalculateReturnTotal();
+    });
+
+    qtyInput.addEventListener('input', () => this.recalculateReturnTotal());
+    priceInput.addEventListener('input', () => {
+      const raw = this.parseRupiah(priceInput.value);
+      priceInput.dataset.rawValue = raw;
+      if (raw > 0) priceInput.value = this.formatRupiahString(raw);
+      this.recalculateReturnTotal();
+    });
+
+    row.querySelector('.btn-remove-ret-item').addEventListener('click', () => {
+      row.remove();
+      this.recalculateReturnTotal();
+    });
+
+    container.appendChild(row);
+    this.recalculateReturnTotal();
+  }
+
+  recalculateReturnTotal() {
+    const container = document.getElementById('returnItemsContainer');
+    if (!container) return;
+
+    let total = 0;
+    container.querySelectorAll('.items-builder-row').forEach(row => {
+      const qty = parseFloat(row.querySelector('.ret-item-qty')?.value) || 0;
+      const price = this.parseRupiah(row.querySelector('.ret-item-price')?.dataset?.rawValue || row.querySelector('.ret-item-price')?.value) || 0;
+      total += (qty * price);
+    });
+
+    const displayEl = document.getElementById('returnTotalDisplay');
+    if (displayEl) {
+      displayEl.textContent = this.store.formatRupiah(total);
+      displayEl.dataset.rawValue = total;
+    }
+  }
+
+  async handleSaveSalesReturn() {
+    const items = [];
+    document.querySelectorAll('#returnItemsContainer .items-builder-row').forEach(row => {
+      const name = row.querySelector('.ret-item-name')?.value.trim();
+      const qty = parseFloat(row.querySelector('.ret-item-qty')?.value) || 0;
+      const unit = row.querySelector('.ret-item-unit')?.value.trim() || 'Pcs';
+      const price = this.parseRupiah(row.querySelector('.ret-item-price')?.dataset?.rawValue || row.querySelector('.ret-item-price')?.value) || 0;
+      const productId = row.querySelector('.ret-item-product-id')?.value || '';
+
+      if (name && qty > 0) {
+        items.push({ id: productId, name, qty, unit, price, subtotal: qty * price });
+      }
+    });
+
+    if (items.length === 0) {
+      alert("Silakan masukkan minimal 1 barang material yang diretur!");
+      return;
+    }
+
+    const totalEl = document.getElementById('returnTotalDisplay');
+    const totalAmount = this.parseRupiah(totalEl?.dataset?.rawValue || totalEl?.textContent) || 0;
+
+    if (totalAmount <= 0) {
+      alert("Total nilai retur harus lebih besar dari Rp 0.");
+      return;
+    }
+
+    const returnData = {
+      title: `Retur Material - ${document.getElementById('returnCustomerName')?.value.trim() || 'Pelanggan'}`,
+      customer: document.getElementById('returnCustomerName')?.value.trim() || 'Pelanggan',
+      projectName: document.getElementById('returnProjectName')?.value.trim() || '',
+      originalTxId: document.getElementById('returnOriginalTxId')?.value.trim() || '',
+      refundMethod: document.getElementById('returnRefundMethod')?.value || 'piutang',
+      returnReason: document.getElementById('returnReasonNote')?.value.trim() || 'Sisa material proyek dikembalikan',
+      amount: totalAmount,
+      items: items
+    };
+
+    try {
+      const saved = await this.store.processSalesReturn(returnData);
+      this.closeModal('modalSalesReturn');
+      this.refreshCurrentView();
+      this.showToast(`Retur material berhasil dicatat! Stok barang otomatis bertambah masuk ke gudang.`);
+    } catch (err) {
+      alert("Gagal menyimpan retur: " + err.message);
+    }
   }
 
   renderPayablesView() {
@@ -1325,6 +1706,11 @@ class AppController {
     const scannerInput = document.getElementById('saleBarcodeScannerInput');
     if (scannerInput) scannerInput.value = '';
 
+    const projInput = document.getElementById('saleProjectName');
+    if (projInput) projInput.value = '';
+
+    this.switchPOSPriceTier('retail');
+
     const container = document.getElementById('saleItemsBuilderContainer');
     if (container) container.innerHTML = '';
     this.addSaleItemRow();
@@ -1335,6 +1721,42 @@ class AppController {
     setTimeout(() => {
       if (scannerInput) scannerInput.focus();
     }, 200);
+  }
+
+  switchPOSPriceTier(tier = 'retail') {
+    const hidden = document.getElementById('salePriceTier');
+    if (hidden) hidden.value = tier;
+
+    // Update active class on buttons
+    document.querySelectorAll('.pos-tier-btn').forEach(btn => {
+      if (btn.dataset.tier === tier) {
+        btn.classList.add('btn-primary', 'active');
+        btn.classList.remove('btn-outline');
+      } else {
+        btn.classList.remove('btn-primary', 'active');
+        btn.classList.add('btn-outline');
+      }
+    });
+
+    // Update prices on all existing rows in POS cart
+    const rows = document.querySelectorAll('#saleItemsBuilderContainer .items-builder-row');
+    rows.forEach(row => {
+      const prodId = row.querySelector('.item-product-id')?.value;
+      const prod = this.inventory ? this.inventory.products.find(p => p.id === prodId) : null;
+      if (prod) {
+        const ratio = parseFloat(row.querySelector('.item-unit-ratio')?.value) || 1;
+        const baseTierPrice = this.inventory.getProductPrice(prod, tier);
+        const effectivePrice = Math.round(baseTierPrice * ratio);
+
+        const priceInput = row.querySelector('.item-price');
+        if (priceInput) {
+          priceInput.value = this.store.formatRupiah(effectivePrice);
+          priceInput.dataset.rawValue = effectivePrice;
+        }
+      }
+    });
+
+    this.recalculateSaleItemsTotal();
   }
 
   playBeepSound() {
@@ -1380,6 +1802,9 @@ class AppController {
 
     this.playBeepSound();
 
+    const currentTier = document.getElementById('salePriceTier')?.value || 'retail';
+    const tierPrice = this.inventory ? this.inventory.getProductPrice(prod, currentTier) : prod.sellPrice;
+
     // Check if product is already in the builder rows
     const rows = document.querySelectorAll('#saleItemsBuilderContainer .items-builder-row');
     let existingRow = null;
@@ -1410,7 +1835,7 @@ class AppController {
       if (rows.length === 1 && !rows[0].querySelector('.item-name')?.value.trim()) {
         rows[0].remove();
       }
-      this.addSaleItemRow(prod.name, 1, prod.unit, prod.sellPrice, prod.id);
+      this.addSaleItemRow(prod.name, 1, prod.unit, tierPrice, prod.id);
     }
 
     this.recalculateSaleItemsTotal();
@@ -1433,8 +1858,11 @@ class AppController {
     const productsList = this.inventory ? this.inventory.products : [];
     const datalistId = `dl-sale-${Date.now()}-${Math.floor(Math.random()*1000)}`;
 
+    const currentTier = document.getElementById('salePriceTier')?.value || 'retail';
     const matched = productsList.find(p => (productId && p.id === productId) || (name && p.name.toLowerCase() === name.toLowerCase()));
     const units = matched ? this.inventory.getProductUnits(matched) : [];
+
+    const effectiveBasePrice = matched ? this.inventory.getProductPrice(matched, currentTier) : price;
 
     let unitControlHTML = '';
     if (units.length > 1) {
@@ -1467,7 +1895,7 @@ class AppController {
         <div class="item-qty-warning text-xs text-danger font-bold" style="display: none; margin-top: 2px;"></div>
       </div>
       <div class="item-unit-wrapper">${unitControlHTML}</div>
-      <input type="text" class="form-control item-price" placeholder="Harga Jual (Rp)" value="${price > 0 ? this.store.formatRupiah(price) : 'Rp 0'}" data-raw-value="${price}" required />
+      <input type="text" class="form-control item-price" placeholder="Harga Jual (Rp)" value="${effectiveBasePrice > 0 ? this.store.formatRupiah(effectiveBasePrice) : 'Rp 0'}" data-raw-value="${effectiveBasePrice}" required />
       <button type="button" class="btn-icon-only text-danger btn-remove-item" title="Hapus Baris" style="margin-top: 5px;">✕</button>
     `;
 
@@ -1518,17 +1946,23 @@ class AppController {
         return;
       }
 
+      const tier = document.getElementById('salePriceTier')?.value || 'retail';
+      const baseTierPrice = this.inventory ? this.inventory.getProductPrice(prod, tier) : prod.sellPrice;
+
       const availableUnits = this.inventory.getProductUnits(prod);
       if (availableUnits.length > 1) {
         unitWrapper.innerHTML = `
           <select class="form-control item-unit-select">
-            ${availableUnits.map(u => `<option value="${u.unitName}" data-ratio="${u.ratio}" data-price="${u.sellPrice}" data-buy="${u.buyPrice}">${u.label}</option>`).join('')}
+            ${availableUnits.map(u => {
+              const uTierPrice = Math.round(baseTierPrice * (u.ratio || 1));
+              return `<option value="${u.unitName}" data-ratio="${u.ratio}" data-price="${uTierPrice}" data-buy="${u.buyPrice}">${u.label}</option>`;
+            }).join('')}
           </select>
         `;
         const sel = unitWrapper.querySelector('.item-unit-select');
         const selectedOpt = sel.options[sel.selectedIndex];
         row.querySelector('.item-unit-ratio').value = selectedOpt.dataset.ratio || 1;
-        const pPrice = parseFloat(selectedOpt.dataset.price) || prod.sellPrice;
+        const pPrice = parseFloat(selectedOpt.dataset.price) || baseTierPrice;
         row.querySelector('.item-price').value = this.store.formatRupiah(pPrice);
         row.querySelector('.item-price').dataset.rawValue = pPrice;
         row.querySelector('.item-cogs').value = selectedOpt.dataset.buy || prod.buyPrice;
@@ -1546,8 +1980,8 @@ class AppController {
       } else {
         unitWrapper.innerHTML = `<input type="text" class="form-control item-unit" placeholder="Satuan" value="${prod.unit || 'Pcs'}" />`;
         row.querySelector('.item-unit-ratio').value = 1;
-        row.querySelector('.item-price').value = this.store.formatRupiah(prod.sellPrice);
-        row.querySelector('.item-price').dataset.rawValue = prod.sellPrice;
+        row.querySelector('.item-price').value = this.store.formatRupiah(baseTierPrice);
+        row.querySelector('.item-price').dataset.rawValue = baseTierPrice;
         row.querySelector('.item-cogs').value = prod.buyPrice;
       }
       validateAndRenderStock(prod);
@@ -2196,6 +2630,11 @@ class AppController {
       codeInput.value = this.inventory.generateProductCode();
     }
 
+    const craftInput = document.getElementById('modalProdCraftsmanPrice');
+    if (craftInput) craftInput.value = '';
+    const projInput = document.getElementById('modalProdProjectPrice');
+    if (projInput) projInput.value = '';
+
     const multiChk = document.getElementById('modalProdHasMultiUnit');
     if (multiChk) multiChk.checked = false;
     this.toggleMultiUnitFields();
@@ -2217,6 +2656,8 @@ class AppController {
     document.getElementById('modalProdUnit').value = p.unit;
     document.getElementById('modalProdBuyPrice').value = p.buyPrice;
     document.getElementById('modalProdSellPrice').value = p.sellPrice;
+    document.getElementById('modalProdCraftsmanPrice').value = p.craftsmanPrice || '';
+    document.getElementById('modalProdProjectPrice').value = p.projectPrice || '';
     document.getElementById('modalProdStock').value = p.stock;
     document.getElementById('modalProdMinStock').value = p.minStock;
     document.getElementById('modalProdLocation').value = p.location || '';
@@ -3083,6 +3524,12 @@ class AppController {
       this.handleSaveManualJournal();
     });
 
+    document.getElementById('btnAddReturnItemRow')?.addEventListener('click', () => this.addReturnItemRow());
+    document.getElementById('formSalesReturn')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await this.handleSaveSalesReturn();
+    });
+
     document.getElementById('formRepayment')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       await this.handleSaveRepayment();
@@ -3239,6 +3686,8 @@ class AppController {
       customer: customer,
       supplier: '',
       phone: document.getElementById('saleCustomerPhone')?.value.trim() || '',
+      projectName: document.getElementById('saleProjectName')?.value.trim() || '',
+      priceTier: document.getElementById('salePriceTier')?.value || 'retail',
       amount: totalAmount,
       subtotal: subtotalAmount,
       discount: discountAmount,
@@ -3369,6 +3818,8 @@ class AppController {
       buyPrice = Math.round(packBuyPrice / packRatio);
     }
     const sellPrice = parseFloat(document.getElementById('modalProdSellPrice').value) || 0;
+    const craftsmanPrice = parseFloat(document.getElementById('modalProdCraftsmanPrice')?.value) || 0;
+    const projectPrice = parseFloat(document.getElementById('modalProdProjectPrice')?.value) || 0;
     const stock = parseFloat(document.getElementById('modalProdStock').value) || 0;
     const totalAssetVal = buyPrice * stock;
 
@@ -3382,6 +3833,8 @@ class AppController {
       unit: document.getElementById('modalProdUnit').value.trim() || 'Pcs',
       buyPrice: buyPrice,
       sellPrice: sellPrice,
+      craftsmanPrice: craftsmanPrice,
+      projectPrice: projectPrice,
       hasMultiUnit: hasMultiUnit,
       packUnit: packUnit,
       packRatio: packRatio,

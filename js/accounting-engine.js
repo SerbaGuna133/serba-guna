@@ -249,6 +249,28 @@ class AccountingEngine {
         }
 
         autoJournals.push({ id: `JRN-${tx.id}`, date, voucherNo: voucher, desc, lines, isAuto: true });
+
+      } else if (tx.type === 'return') {
+        const lines = [];
+        // 1. Akun Kontra Pendapatan: Retur Penjualan (Sisi Debit 4103)
+        lines.push({ accountCode: '4103', debit: amount, credit: 0, desc: 'Retur Penjualan Material' });
+
+        // 2. Pengembalian Dana / Potong Piutang (Sisi Kredit)
+        if (tx.refundMethod === 'piutang' || tx.paymentMethod === 'piutang') {
+          lines.push({ accountCode: '1103', debit: 0, credit: amount, desc: 'Pengurangan Piutang Bon Pelanggan' });
+        } else if (tx.refundMethod === 'transfer' || tx.paymentMethod === 'transfer') {
+          lines.push({ accountCode: '1102', debit: 0, credit: amount, desc: 'Pengembalian Dana via Transfer Bank' });
+        } else {
+          lines.push({ accountCode: '1101', debit: 0, credit: amount, desc: 'Pengembalian Uang Kasir Tunai' });
+        }
+
+        // 3. Kembalikan Stok Persediaan ke Gudang (Debit 1104) & Kurangi HPP (Kredit 5101)
+        if (cogs > 0) {
+          lines.push({ accountCode: '1104', debit: cogs, credit: 0, desc: 'Stok Barang Masuk Kembali ke Gudang' });
+          lines.push({ accountCode: '5101', debit: 0, credit: cogs, desc: 'Pengurangan HPP Barang Diretur' });
+        }
+
+        autoJournals.push({ id: `JRN-${tx.id}`, date, voucherNo: voucher, desc, lines, isAuto: true });
       }
 
       // 4. Pembayaran Cicilan / Pelunasan Lanjutan

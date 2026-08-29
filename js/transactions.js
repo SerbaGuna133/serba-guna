@@ -129,11 +129,16 @@ class TransactionStore {
       time: timeStr,
       type: txData.type || "in",
       paymentMethod: txData.paymentMethod || "cash",
+      refundMethod: txData.refundMethod || "",
       category: txData.category || "lainnya",
       title: txData.title.trim(),
       customer: (txData.customer || "").trim(),
       supplier: (txData.supplier || "").trim(),
       phone: (txData.phone || "").trim(),
+      projectName: (txData.projectName || "").trim(),
+      priceTier: txData.priceTier || "retail",
+      returnReason: (txData.returnReason || "").trim(),
+      originalTxId: (txData.originalTxId || "").trim(),
       amount: totalAmount,
       subtotal: Number(txData.subtotal) || totalAmount,
       discount: Number(txData.discount) || 0,
@@ -396,6 +401,102 @@ class TransactionStore {
         if (a.debtAmount === 0 && b.debtAmount > 0) return 1;
         return (a.dueDate || "9999") > (b.dueDate || "9999") ? 1 : -1;
       });
+  }
+
+  getProjectBillingList() {
+    const projectsMap = {};
+
+    this.transactions
+      .filter(tx => tx.type === 'in' && (tx.debtAmount > 0 || tx.paymentMethod === 'piutang'))
+      .forEach(tx => {
+        const pName = (tx.projectName || 'Proyek Umum / Tanpa Nama').trim();
+        const cust = (tx.customer || 'Pelanggan Umum').trim();
+        const key = `${cust}|||${pName}`;
+        if (!projectsMap[key]) {
+          projectsMap[key] = {
+            key,
+            projectName: pName,
+            customer: cust,
+            phone: tx.phone || '',
+            totalBilling: 0,
+            totalPaid: 0,
+            totalRemainingDebt: 0,
+            invoices: [],
+            lastDate: tx.date
+          };
+        }
+        projectsMap[key].totalBilling += Number(tx.amount) || 0;
+        projectsMap[key].totalPaid += Number(tx.paidAmount) || 0;
+        projectsMap[key].totalRemainingDebt += Number(tx.debtAmount) || 0;
+        projectsMap[key].invoices.push(tx);
+        if (tx.date > projectsMap[key].lastDate) {
+          projectsMap[key].lastDate = tx.date;
+        }
+      });
+
+    return Object.values(projectsMap).sort((a, b) => b.totalRemainingDebt - a.totalRemainingDebt);
+  }
+
+  async processSalesReturn(returnData) {
+    const returnAmount = Number(returnData.amount) || 0;
+    if (returnAmount <= 0) throw new Error("Nominal retur tidak valid.");
+
+    const items = Array.isArray(returnData.items) ? returnData.items : [];
+    let totalCOGS = 0;
+
+    if (items.length > 0 && window.inventoryStore) {
+      items.forEach(it => {
+        const prod = window.inventoryStore.products.find(p => p.id === it.id || p.name.toLowerCase() === (it.name || '').toLowerCase());
+        const itemCogs = prod ? prod.buyPrice : (it.price * 0.8);
+        const itemQty = Number(it.qty) || 1;
+        totalCOGS += (itemCogs * itemQty);
+
+        // Kembalikan stok ke master inventori
+        if (prod) {
+          window.inventoryStore.addStockFromReturn(prod.id, itemQty, `Retur Nota #${returnData.originalTxId || 'Sisa Proyek'}`);
+        }
+      });
+    }
+
+    const returnTx = {
+      type: 'return',
+      title: `Retur: ${returnData.title || 'Pengembalian Sisa Material'}`,
+      customer: returnData.customer || '',
+      phone: returnData.phone || '',
+      amount: returnAmount,
+      paidAmount: returnAmount,
+      debtAmount: 0,
+      cogs: totalCOGS,
+      paymentMethod: returnData.refundMethod || 'cash',
+      refundMethod: returnData.refundMethod || 'cash',
+      originalTxId: returnData.originalTxId || '',
+      returnReason: returnData.returnReason || 'Sisa proyek tidak terpakai',
+      projectName: returnData.projectName || '',
+      category: 'lainnya',
+      status: 'lunas',
+      items: items,
+      notes: returnData.notes || `Retur sisa material nota ${returnData.originalTxId || '-'}`
+    };
+
+    // Jika metode pengembalian adalah 'potong_piutang' dan ada originalTxId
+    if (returnData.refundMethod === 'piutang' && returnData.originalTxId) {
+      const origTx = this.transactions.find(t => t.id === returnData.originalTxId);
+      if (origTx && origTx.debtAmount > 0) {
+        origTx.debtAmount = Math.max(0, origTx.debtAmount - returnAmount);
+        origTx.paidAmount = (Number(origTx.paidAmount) || 0) + returnAmount;
+        if (origTx.debtAmount === 0) origTx.status = 'lunas';
+        origTx.payments = origTx.payments || [];
+        origTx.payments.push({
+          date: new Date().toISOString().split('T')[0],
+          amount: returnAmount,
+          note: `Potongan Retur Material #${returnTx.title}`,
+          method: 'retur'
+        });
+      }
+    }
+
+    const savedTx = await this.addTransaction(returnTx);
+    return savedTx;
   }
 
   getPayablesList() {
