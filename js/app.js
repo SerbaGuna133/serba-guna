@@ -47,6 +47,14 @@ class AppController {
     if (this.firebase.config) {
       const ok = await this.firebase.init();
       if (ok) {
+        // Auto-clean database Cloud Firebase satu kali untuk versi baru bersih
+        if (localStorage.getItem("TB_SERBAGUNA_CLOUD_CLEANED") !== APP_DATA_VERSION) {
+          try {
+            await this.firebase.clearAllCloudData();
+            localStorage.setItem("TB_SERBAGUNA_CLOUD_CLEANED", APP_DATA_VERSION);
+          } catch (e) {}
+        }
+
         // 1. Sync Transaksi Realtime
         this.firebase.listenToTransactions(
           (cloudData) => {

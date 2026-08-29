@@ -4,7 +4,7 @@
  */
 
 // Versi database bersih
-const APP_DATA_VERSION = "v2.0-CLEAN-ZERO";
+const APP_DATA_VERSION = "v3.0-TOTAL-ZERO-CLEAN";
 
 // Otomatis bersihkan localStorage dari data contoh lama
 (function autoPurgeOldSampleCache() {
@@ -17,7 +17,7 @@ const APP_DATA_VERSION = "v2.0-CLEAN-ZERO";
       localStorage.removeItem("TB_SERBAGUNA_OPENING_BALANCES");
       localStorage.removeItem("TB_SERBAGUNA_MANUAL_JOURNALS");
       localStorage.setItem("TB_SERBAGUNA_DATA_VERSION", APP_DATA_VERSION);
-      console.log("Database TB Serba Guna telah dikosongkan (0 Bersih).");
+      console.log("Database TB Serba Guna telah dikosongkan (0 Bersih Total).");
     }
   } catch (e) {
     console.warn("Auto purge cache warning:", e);
