@@ -23,50 +23,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <!-- Local Barcode Scanner Engine (100% Android & iOS Support Offline / No CDN Block) -->
   <script src="js/html5-qrcode.min.js"></script>
-
-  <style>
-    /* Force exactly 1 single video feed in Camera Scanner */
-    #html5QrcodeReader {
-      width: 100% !important;
-      max-width: 100% !important;
-      background: #000000 !important;
-      border-radius: 8px !important;
-      overflow: hidden !important;
-      position: relative !important;
-      margin: 0 auto !important;
-      border: none !important;
-    }
-    #html5QrcodeReader video {
-      width: 100% !important;
-      height: 260px !important;
-      max-height: 320px !important;
-      object-fit: cover !important;
-      display: block !important;
-      margin: 0 auto !important;
-      border-radius: 8px !important;
-    }
-    #html5QrcodeReader canvas,
-    #html5QrcodeReader * canvas,
-    #qr-canvas,
-    canvas#qr-canvas,
-    #html5QrcodeReader__scan_region canvas,
-    #qr-shaded-region {
-      display: none !important;
-      visibility: hidden !important;
-      position: absolute !important;
-      top: -9999px !important;
-      left: -9999px !important;
-      width: 0px !important;
-      height: 0px !important;
-      opacity: 0 !important;
-      pointer-events: none !important;
-    }
-    #html5QrcodeReader__header_message,
-    #html5QrcodeReader__dashboard_section_csr,
-    #html5QrcodeReader__status_span {
-      display: none !important;
-    }
-  </style>
 </head>
 <body>
 
@@ -1505,10 +1461,9 @@
       <div class="modal-body">
         <p class="text-sm text-muted" style="margin-bottom: 0.5rem;">Arahkan kamera HP ke garis barcode atau stiker barang:</p>
         
-        <!-- Scanner Wrapper with Target Frame Overlay -->
-        <div style="position: relative; width: 100%; border-radius: var(--radius-md); overflow: hidden; background: #000; min-height: 240px;">
-          <!-- HTML5-QRCode Reader Container -->
-          <div id="html5QrcodeReader" style="width: 100%;"></div>
+        <!-- Native Clean Single Video Frame -->
+        <div style="position: relative; width: 100%; height: 260px; border-radius: var(--radius-md); overflow: hidden; background: #000;">
+          <video id="pureCameraVideo" style="width: 100%; height: 100%; object-fit: cover; display: block;" playsinline autoplay muted></video>
           <!-- Visual Target Frame & Laser -->
           <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 10;">
             <div style="position: relative; width: 80%; height: 130px; border: 2px solid #10b981; border-radius: 8px; box-shadow: 0 0 15px rgba(16,185,129,0.5);">

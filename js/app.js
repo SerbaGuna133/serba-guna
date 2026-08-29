@@ -2257,95 +2257,136 @@ class AppController {
 
   // ==================== SCAN BARCODE VIA KAMERA HP ====================
   async openCameraScannerModal() {
-    this.isCameraScanningLocked = false;
     this.openModal('modalCameraScanner');
     const status = document.getElementById('cameraScannerStatus');
     const inp = document.getElementById('cameraManualCodeInput');
+    const video = document.getElementById('pureCameraVideo');
     if (inp) inp.value = '';
 
     if (status) status.textContent = "Menghubungkan kamera HP...";
 
-    if (typeof Html5Qrcode !== 'undefined') {
-      try {
-        if (this.html5QrCode && this.html5QrCode.isScanning) {
-          try {
-            await this.html5QrCode.stop();
-          } catch (e) {}
-        }
+    this.stopCameraStream();
+    this.isCameraScanning = true;
+    this.isCameraScanningLocked = false;
 
-        const container = document.getElementById("html5QrcodeReader");
-        if (container) container.innerHTML = '';
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      if (status) status.textContent = "❌ Kamera tidak didukung di browser ini. Silakan ketik nomor kode angka.";
+      return;
+    }
 
-        this.html5QrCode = new Html5Qrcode("html5QrcodeReader");
+    try {
+      const facing = this.cameraFacingMode || "environment";
+      const constraints = {
+        video: {
+          facingMode: { ideal: facing },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      };
 
-        const facing = this.cameraFacingMode || "environment";
-        const config = {
-          fps: 15
-        };
-
-        await this.html5QrCode.start(
-          { facingMode: facing },
-          config,
-          (decodedText) => {
-            if (this.isCameraScanningLocked) return;
-            if (decodedText && decodedText.trim()) {
-              this.isCameraScanningLocked = true; // Kunci seketika agar tidak ter-scan berulang
-              const code = decodedText.trim();
-              this.closeCameraScannerModal();
-              this.handleBarcodeScanInPOS(code);
-            }
-          },
-          () => {}
-        );
-
-        // Pastikan semua canvas internal disembunyikan agar hanya ada 1 video
-        const hideCanvases = () => {
-          const container = document.getElementById("html5QrcodeReader");
-          if (container) {
-            container.querySelectorAll("canvas, #qr-shaded-region").forEach(el => {
-              el.style.display = "none";
-              el.style.visibility = "hidden";
-              el.style.position = "absolute";
-              el.style.top = "-9999px";
-              el.style.left = "-9999px";
-              el.style.width = "0px";
-              el.style.height = "0px";
-              el.style.opacity = "0";
-              el.style.pointerEvents = "none";
-            });
-          }
-        };
-        hideCanvases();
-        setTimeout(hideCanvases, 100);
-        setTimeout(hideCanvases, 300);
-
-        if (status) status.textContent = "✅ Kamera aktif! Arahkan barcode ke kotak bidik di atas.";
-      } catch (err) {
-        console.warn("Gagal start Html5Qrcode:", err);
-        if (status) {
-          status.innerHTML = `<span style="color: #ef4444; font-weight: 700;">⚠️ Akses kamera: ${err.message || 'Izin kamera ditolak'}. Pastikan tombol Izinkan/Allow kamera diklik di browser HP Anda.</span>`;
-        }
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      this.cameraStream = stream;
+      if (video) {
+        video.srcObject = stream;
+        video.setAttribute("playsinline", "true");
+        await video.play();
       }
-    } else {
-      if (status) status.textContent = "⚠️ Engine kamera scanner sedang dimuat, silakan coba lagi dalam 2 detik.";
+
+      if (status) status.textContent = "✅ Kamera aktif! Arahkan barcode ke kotak bidik di atas.";
+
+      this.runBarcodeScanningLoop();
+    } catch (err) {
+      console.warn("Gagal membuka kamera:", err);
+      if (status) {
+        status.innerHTML = `<span style="color: #ef4444; font-weight: 700;">⚠️ Akses kamera gagal: ${err.message}. Pastikan izin kamera telah diizinkan di browser HP Anda.</span>`;
+      }
     }
   }
 
-  async closeCameraScannerModal() {
-    this.closeModal('modalCameraScanner');
-    if (this.html5QrCode) {
+  stopCameraStream() {
+    this.isCameraScanning = false;
+    if (this.cameraStream) {
       try {
-        if (this.html5QrCode.isScanning) {
-          await this.html5QrCode.stop();
-        }
-        this.html5QrCode.clear();
-      } catch (e) {
-        console.warn("Gagal stop Html5Qrcode:", e);
-      }
+        this.cameraStream.getTracks().forEach(track => track.stop());
+      } catch (e) {}
+      this.cameraStream = null;
     }
-    setTimeout(() => {
-      this.isCameraScanningLocked = false;
-    }, 1000);
+    const video = document.getElementById('pureCameraVideo');
+    if (video) {
+      try {
+        video.pause();
+        video.srcObject = null;
+      } catch (e) {}
+    }
+  }
+
+  closeCameraScannerModal() {
+    this.stopCameraStream();
+    this.closeModal('modalCameraScanner');
+  }
+
+  async switchCameraFacing() {
+    this.cameraFacingMode = this.cameraFacingMode === 'user' ? 'environment' : 'user';
+    this.closeCameraScannerModal();
+    setTimeout(() => this.openCameraScannerModal(), 300);
+  }
+
+  async runBarcodeScanningLoop() {
+    const video = document.getElementById('pureCameraVideo');
+    
+    let barcodeDetector = null;
+    if ('BarcodeDetector' in window) {
+      try {
+        barcodeDetector = new BarcodeDetector({
+          formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'qr_code', 'upc_a', 'upc_e', 'itf']
+        });
+      } catch (e) {}
+    }
+
+    const scanFrame = async () => {
+      if (!this.isCameraScanning || !this.cameraStream || !video || video.readyState < 2) {
+        if (this.isCameraScanning) {
+          requestAnimationFrame(scanFrame);
+        }
+        return;
+      }
+
+      if (this.isCameraScanningLocked) return;
+
+      try {
+        let detectedCode = null;
+
+        if (barcodeDetector) {
+          const barcodes = await barcodeDetector.detect(video);
+          if (barcodes && barcodes.length > 0) {
+            detectedCode = barcodes[0].rawValue;
+          }
+        }
+
+        if (detectedCode && detectedCode.trim()) {
+          const code = detectedCode.trim();
+          // 1. Kunci seketika agar tidak ter-scan berulang kali
+          this.isCameraScanning = false;
+          this.isCameraScanningLocked = true;
+
+          // 2. Matikan kamera dan tutup pop-up seketika
+          this.closeCameraScannerModal();
+
+          // 3. Masukkan barang ke kasir sekali saja
+          this.handleBarcodeScanInPOS(code);
+          return;
+        }
+      } catch (e) {}
+
+      if (this.isCameraScanning && !this.isCameraScanningLocked) {
+        setTimeout(() => {
+          requestAnimationFrame(scanFrame);
+        }, 100);
+      }
+    };
+
+    requestAnimationFrame(scanFrame);
   }
 
   async switchCameraFacing() {
