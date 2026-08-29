@@ -1208,6 +1208,40 @@ button, input, select, textarea {
   color: #ef4444 !important;
 }
 
+/* ==================== CAMERA SCANNER MODAL ==================== */
+#html5QrcodeReader {
+  width: 100% !important;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #000000;
+  position: relative;
+  min-height: 200px;
+  max-height: 380px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#html5QrcodeReader video {
+  width: 100% !important;
+  height: auto !important;
+  max-height: 360px !important;
+  object-fit: contain !important;
+  border-radius: var(--radius-md);
+  display: block;
+  margin: 0 auto;
+}
+
+#html5QrcodeReader canvas {
+  border-radius: var(--radius-md);
+}
+
+#html5QrcodeReader__scan_region {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* ==================== PRINT & OFFICIAL INVOICE STYLES ==================== */
 .print-document {
   background: #ffffff;

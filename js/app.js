@@ -2280,9 +2280,14 @@ class AppController {
 
         const facing = this.cameraFacingMode || "environment";
         const config = {
-          fps: 10,
-          qrbox: { width: 250, height: 140 },
-          aspectRatio: 1.2
+          fps: 15,
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            return {
+              width: Math.floor(minEdge * 0.85),
+              height: Math.floor(minEdge * 0.45)
+            };
+          }
         };
 
         await this.html5QrCode.start(
