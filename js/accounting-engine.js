@@ -420,7 +420,11 @@ class AccountingEngine {
     const stockJrn = this.generateJournalsFromInventory();
     const combined = [...autoJrn, ...stockJrn, ...this.manualJournals];
 
-    combined.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    combined.sort((a, b) => {
+      const dateDiff = (a.date || "").localeCompare(b.date || "");
+      if (dateDiff !== 0) return dateDiff;
+      return (a.voucherNo || a.id || "").localeCompare(b.voucherNo || b.id || "");
+    });
 
     if (period) {
       return combined.filter(j => j.date && j.date.startsWith(period));
@@ -447,7 +451,7 @@ class AccountingEngine {
       };
     });
 
-    journals.slice().reverse().forEach(j => {
+    journals.forEach(j => {
       j.lines.forEach(l => {
         const code = l.accountCode;
         if (!ledger[code]) {
