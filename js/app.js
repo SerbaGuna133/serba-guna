@@ -2297,6 +2297,28 @@ class AppController {
           },
           () => {}
         );
+
+        // Pastikan semua canvas internal disembunyikan agar hanya ada 1 video
+        const hideCanvases = () => {
+          const container = document.getElementById("html5QrcodeReader");
+          if (container) {
+            container.querySelectorAll("canvas, #qr-shaded-region").forEach(el => {
+              el.style.display = "none";
+              el.style.visibility = "hidden";
+              el.style.position = "absolute";
+              el.style.top = "-9999px";
+              el.style.left = "-9999px";
+              el.style.width = "0px";
+              el.style.height = "0px";
+              el.style.opacity = "0";
+              el.style.pointerEvents = "none";
+            });
+          }
+        };
+        hideCanvases();
+        setTimeout(hideCanvases, 100);
+        setTimeout(hideCanvases, 300);
+
         if (status) status.textContent = "✅ Kamera aktif! Arahkan barcode ke kotak bidik di atas.";
       } catch (err) {
         console.warn("Gagal start Html5Qrcode:", err);

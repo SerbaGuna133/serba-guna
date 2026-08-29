@@ -23,6 +23,50 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <!-- Local Barcode Scanner Engine (100% Android & iOS Support Offline / No CDN Block) -->
   <script src="js/html5-qrcode.min.js"></script>
+
+  <style>
+    /* Force exactly 1 single video feed in Camera Scanner */
+    #html5QrcodeReader {
+      width: 100% !important;
+      max-width: 100% !important;
+      background: #000000 !important;
+      border-radius: 8px !important;
+      overflow: hidden !important;
+      position: relative !important;
+      margin: 0 auto !important;
+      border: none !important;
+    }
+    #html5QrcodeReader video {
+      width: 100% !important;
+      height: 260px !important;
+      max-height: 320px !important;
+      object-fit: cover !important;
+      display: block !important;
+      margin: 0 auto !important;
+      border-radius: 8px !important;
+    }
+    #html5QrcodeReader canvas,
+    #html5QrcodeReader * canvas,
+    #qr-canvas,
+    canvas#qr-canvas,
+    #html5QrcodeReader__scan_region canvas,
+    #qr-shaded-region {
+      display: none !important;
+      visibility: hidden !important;
+      position: absolute !important;
+      top: -9999px !important;
+      left: -9999px !important;
+      width: 0px !important;
+      height: 0px !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+    #html5QrcodeReader__header_message,
+    #html5QrcodeReader__dashboard_section_csr,
+    #html5QrcodeReader__status_span {
+      display: none !important;
+    }
+  </style>
 </head>
 <body>
 
