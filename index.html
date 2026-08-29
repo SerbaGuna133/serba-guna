@@ -1405,6 +1405,27 @@
             </div>
           </div>
 
+          <!-- Live Selisih Perubahan Harga (Sebelum vs Sesudah) & Dampak Aset Stok -->
+          <div id="modalProdPriceDiffBox" style="display: none; background: rgba(59, 130, 246, 0.08); border: 1px dashed rgba(59, 130, 246, 0.4); border-radius: var(--radius-md); padding: 0.75rem 1rem; margin-top: -0.5rem; margin-bottom: 1rem;">
+            <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 800; color: var(--info); letter-spacing: 0.5px; margin-bottom: 0.35rem;">
+              📊 Perbandingan Selisih Harga (Sebelum vs Sesudah Edit):
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.5rem; font-size: 0.8rem;">
+              <div>
+                <span class="text-muted">Selisih Modal Beli:</span><br>
+                <div id="modalDiffBuyPrice" style="font-size: 0.85rem; font-weight: 700; margin-top: 2px;">Rp 0</div>
+              </div>
+              <div>
+                <span class="text-muted">Selisih Harga Jual:</span><br>
+                <div id="modalDiffSellPrice" style="font-size: 0.85rem; font-weight: 700; margin-top: 2px;">Rp 0</div>
+              </div>
+              <div>
+                <span class="text-muted">Dampak Nilai Stok Gudang:</span><br>
+                <div id="modalDiffStockValuation" style="font-size: 0.85rem; font-weight: 700; margin-top: 2px;">Rp 0</div>
+              </div>
+            </div>
+          </div>
+
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label">Jumlah Stok Awal:</label>

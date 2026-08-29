@@ -2091,6 +2091,63 @@ class AppController {
         }
       };
     });
+
+    // 4. Perhitungan Selisih Perubahan Harga (Sebelum vs Sesudah) & Dampak Aset Stok
+    const diffBox = document.getElementById('modalProdPriceDiffBox');
+    if (diffBox) {
+      if (this.editingProductOriginal) {
+        diffBox.style.display = 'block';
+        const origBuy = this.editingProductOriginal.buyPrice || 0;
+        const origSell = this.editingProductOriginal.sellPrice || 0;
+        const currentStock = parseFloat(document.getElementById('modalProdStock')?.value) || 0;
+
+        const diffBuy = buyPrice - origBuy;
+        const diffSell = sellPrice - origSell;
+        const diffAssetVal = diffBuy * currentStock;
+
+        // Buy Price Diff HTML
+        const elDiffBuy = document.getElementById('modalDiffBuyPrice');
+        if (elDiffBuy) {
+          if (diffBuy > 0) {
+            const pct = origBuy > 0 ? ((diffBuy / origBuy) * 100).toFixed(1) : 100;
+            elDiffBuy.innerHTML = `<span style="color: #ef4444;">🔺 Naik +${this.store.formatRupiah(diffBuy)} (+${pct}%)</span><br><small class="text-muted">Semula: ${this.store.formatRupiah(origBuy)}</small>`;
+          } else if (diffBuy < 0) {
+            const pct = origBuy > 0 ? ((Math.abs(diffBuy) / origBuy) * 100).toFixed(1) : 100;
+            elDiffBuy.innerHTML = `<span style="color: #10b981;">🔻 Turun -${this.store.formatRupiah(Math.abs(diffBuy))} (-${pct}%)</span><br><small class="text-muted">Semula: ${this.store.formatRupiah(origBuy)}</small>`;
+          } else {
+            elDiffBuy.innerHTML = `<span style="color: var(--text-muted);">Tetap (${this.store.formatRupiah(origBuy)})</span>`;
+          }
+        }
+
+        // Sell Price Diff HTML
+        const elDiffSell = document.getElementById('modalDiffSellPrice');
+        if (elDiffSell) {
+          if (diffSell > 0) {
+            const pct = origSell > 0 ? ((diffSell / origSell) * 100).toFixed(1) : 100;
+            elDiffSell.innerHTML = `<span style="color: #10b981;">🔺 Naik +${this.store.formatRupiah(diffSell)} (+${pct}%)</span><br><small class="text-muted">Semula: ${this.store.formatRupiah(origSell)}</small>`;
+          } else if (diffSell < 0) {
+            const pct = origSell > 0 ? ((Math.abs(diffSell) / origSell) * 100).toFixed(1) : 100;
+            elDiffSell.innerHTML = `<span style="color: #ef4444;">🔻 Turun -${this.store.formatRupiah(Math.abs(diffSell))} (-${pct}%)</span><br><small class="text-muted">Semula: ${this.store.formatRupiah(origSell)}</small>`;
+          } else {
+            elDiffSell.innerHTML = `<span style="color: var(--text-muted);">Tetap (${this.store.formatRupiah(origSell)})</span>`;
+          }
+        }
+
+        // Stock Valuation Impact HTML
+        const elDiffAsset = document.getElementById('modalDiffStockValuation');
+        if (elDiffAsset) {
+          if (diffAssetVal > 0) {
+            elDiffAsset.innerHTML = `<span style="color: #10b981; font-weight: 800;">+${this.store.formatRupiah(diffAssetVal)}</span><br><small class="text-muted">(${currentStock} stok bertambah nilainya)</small>`;
+          } else if (diffAssetVal < 0) {
+            elDiffAsset.innerHTML = `<span style="color: #ef4444; font-weight: 800;">-${this.store.formatRupiah(Math.abs(diffAssetVal))}</span><br><small class="text-muted">(${currentStock} stok berkurang nilainya)</small>`;
+          } else {
+            elDiffAsset.innerHTML = `<span style="color: var(--text-muted);">Tidak ada perubahan aset</span>`;
+          }
+        }
+      } else {
+        diffBox.style.display = 'none';
+      }
+    }
   }
 
   toggleMultiUnitFields() {
@@ -2129,6 +2186,7 @@ class AppController {
 
   openNewProductModal() {
     this.editingProdId = null;
+    this.editingProductOriginal = null;
     const form = document.getElementById('formNewProduct');
     if (form) form.reset();
     document.getElementById('modalProductTitle').textContent = `📦 Tambah Master Barang Material`;
@@ -2151,6 +2209,7 @@ class AppController {
     if (!p) return;
 
     this.editingProdId = productId;
+    this.editingProductOriginal = { buyPrice: p.buyPrice, sellPrice: p.sellPrice, stock: p.stock };
     document.getElementById('modalProductTitle').textContent = `✏️ Edit Barang: ${p.name}`;
     document.getElementById('modalProdCode').value = p.code || p.id;
     document.getElementById('modalProdName').value = p.name;
