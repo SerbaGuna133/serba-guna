@@ -1356,6 +1356,13 @@ class AppController {
       return;
     }
 
+    const now = Date.now();
+    if (this.lastScannedQuery === q && (now - (this.lastScannedTime || 0)) < 800) {
+      return; // Abaikan duplikasi scan dalam rentang < 800ms
+    }
+    this.lastScannedQuery = q;
+    this.lastScannedTime = now;
+
     const prod = this.inventory ? this.inventory.findProductByQuery(q) : null;
     if (!prod) {
       alert(`❌ Barang dengan kode/nama "${q}" tidak ditemukan di Master Stok Barang.\n\nTips: Periksa apakah kode barang sudah benar di tab Stok Barang.`);
@@ -2250,6 +2257,7 @@ class AppController {
 
   // ==================== SCAN BARCODE VIA KAMERA HP ====================
   async openCameraScannerModal() {
+    this.isCameraScanningLocked = false;
     this.openModal('modalCameraScanner');
     const status = document.getElementById('cameraScannerStatus');
     const inp = document.getElementById('cameraManualCodeInput');
@@ -2272,7 +2280,7 @@ class AppController {
 
         const facing = this.cameraFacingMode || "environment";
         const config = {
-          fps: 15,
+          fps: 10,
           qrbox: { width: 250, height: 140 },
           aspectRatio: 1.2
         };
@@ -2281,9 +2289,12 @@ class AppController {
           { facingMode: facing },
           config,
           (decodedText) => {
-            if (decodedText) {
+            if (this.isCameraScanningLocked) return;
+            if (decodedText && decodedText.trim()) {
+              this.isCameraScanningLocked = true; // Kunci seketika agar tidak ter-scan berulang
+              const code = decodedText.trim();
               this.closeCameraScannerModal();
-              this.handleBarcodeScanInPOS(decodedText);
+              this.handleBarcodeScanInPOS(code);
             }
           },
           () => {}
@@ -2301,14 +2312,20 @@ class AppController {
   }
 
   async closeCameraScannerModal() {
-    if (this.html5QrCode && this.html5QrCode.isScanning) {
+    this.closeModal('modalCameraScanner');
+    if (this.html5QrCode) {
       try {
-        await this.html5QrCode.stop();
+        if (this.html5QrCode.isScanning) {
+          await this.html5QrCode.stop();
+        }
+        this.html5QrCode.clear();
       } catch (e) {
         console.warn("Gagal stop Html5Qrcode:", e);
       }
     }
-    this.closeModal('modalCameraScanner');
+    setTimeout(() => {
+      this.isCameraScanningLocked = false;
+    }, 1000);
   }
 
   async switchCameraFacing() {
