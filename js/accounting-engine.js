@@ -207,7 +207,16 @@ class AccountingEngine {
           lines.push({ accountCode: '1104', debit: 0, credit: cogs, desc: 'Pengurangan Stok Persediaan' });
         }
 
-        autoJournals.push({ id: `JRN-${tx.id}`, date, voucherNo: voucher, desc, lines, isAuto: true });
+        autoJournals.push({
+          id: `JRN-${tx.id}`,
+          date,
+          createdAt: tx.createdAt || `${date}T${tx.time || '12:00:00'}`,
+          priority: 40, // Penjualan Kasir
+          voucherNo: voucher,
+          desc,
+          lines,
+          isAuto: true
+        });
 
       } else if (tx.type === 'out') {
         const lines = [];
@@ -248,7 +257,16 @@ class AccountingEngine {
           lines.push({ accountCode: '1101', debit: 0, credit: amount, desc: 'Pengeluaran Kas Toko' });
         }
 
-        autoJournals.push({ id: `JRN-${tx.id}`, date, voucherNo: voucher, desc, lines, isAuto: true });
+        autoJournals.push({
+          id: `JRN-${tx.id}`,
+          date,
+          createdAt: tx.createdAt || `${date}T${tx.time || '10:00:00'}`,
+          priority: 30, // Kulakan / Stok Masuk
+          voucherNo: voucher,
+          desc,
+          lines,
+          isAuto: true
+        });
 
       } else if (tx.type === 'return') {
         const lines = [];
@@ -270,7 +288,16 @@ class AccountingEngine {
           lines.push({ accountCode: '5101', debit: 0, credit: cogs, desc: 'Pengurangan HPP Barang Diretur' });
         }
 
-        autoJournals.push({ id: `JRN-${tx.id}`, date, voucherNo: voucher, desc, lines, isAuto: true });
+        autoJournals.push({
+          id: `JRN-${tx.id}`,
+          date,
+          createdAt: tx.createdAt || `${date}T${tx.time || '14:00:00'}`,
+          priority: 50, // Retur Penjualan
+          voucherNo: voucher,
+          desc,
+          lines,
+          isAuto: true
+        });
       }
 
       // 4. Pembayaran Cicilan / Pelunasan Lanjutan
@@ -297,6 +324,8 @@ class AccountingEngine {
           autoJournals.push({
             id: `JRN-PAY-${tx.id}-${pIdx}`,
             date: payDate,
+            createdAt: p.createdAt || `${payDate}T${tx.time || '15:00:00'}`,
+            priority: 60, // Pelunasan Cicilan
             voucherNo: p.receiptNo || `PAY-${tx.id}-${pIdx}`,
             desc: `Pelunasan Cicilan: ${tx.title} (${tx.customer || tx.supplier || ''})`,
             lines: payLines,
@@ -322,6 +351,9 @@ class AccountingEngine {
       throw new Error(`Ayat Jurnal Tidak Seimbang! Total Debit (${totDebit}) harus sama dengan Total Kredit (${totCredit})`);
     }
 
+    const isOwnerEquity = journalData.lines.some(l => l.accountCode === '3101' || l.accountCode === '1104');
+    const priority = isOwnerEquity ? 15 : 35;
+
     const newJournal = {
       id: `MJRN-${Date.now()}`,
       date: journalData.date || new Date().toISOString().split('T')[0],
@@ -329,6 +361,7 @@ class AccountingEngine {
       desc: journalData.desc || "Jurnal Penyesuaian Manual",
       lines: journalData.lines,
       isAuto: false,
+      priority: priority,
       createdAt: new Date().toISOString()
     };
 
@@ -352,12 +385,16 @@ class AccountingEngine {
       throw new Error(`Ayat Jurnal Tidak Seimbang! Total Debit (${totDebit}) harus sama dengan Total Kredit (${totCredit})`);
     }
 
+    const isOwnerEquity = journalData.lines.some(l => l.accountCode === '3101' || l.accountCode === '1104');
+    const priority = isOwnerEquity ? 15 : 35;
+
     const updated = {
       ...this.manualJournals[idx],
       date: journalData.date || this.manualJournals[idx].date,
       voucherNo: journalData.voucherNo || this.manualJournals[idx].voucherNo,
       desc: journalData.desc || this.manualJournals[idx].desc,
       lines: journalData.lines,
+      priority: priority,
       updatedAt: new Date().toISOString()
     };
 
@@ -390,7 +427,9 @@ class AccountingEngine {
         journals.push({
           id: `JRN-STK-${p.id}`,
           date: dateStr,
-          voucherNo: `STK-${p.id}`,
+          createdAt: p.createdAt || `${dateStr}T00:00:00.000Z`,
+          priority: 10, // Modal Awal / Saldo Awal Persediaan selalu nomor 1 paling atas
+          voucherNo: `STK-${p.code || p.id}`,
           desc: `Saldo Awal Persediaan Material: ${p.name} (${initStock} ${p.unit} @ Rp ${buyPrice.toLocaleString('id-ID')})`,
           lines: [
             {
@@ -421,8 +460,23 @@ class AccountingEngine {
     const combined = [...autoJrn, ...stockJrn, ...this.manualJournals];
 
     combined.sort((a, b) => {
-      const dateDiff = (a.date || "").localeCompare(b.date || "");
-      if (dateDiff !== 0) return dateDiff;
+      // 1. Urutkan berdasarkan Tanggal Transaksi (Terlama ke Terbaru)
+      const dateA = a.date || "";
+      const dateB = b.date || "";
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+
+      // 2. Jika tanggal sama, urutkan berdasarkan Prioritas Akuntansi:
+      //    10: Saldo Awal Persediaan (Modal), 15: Modal Awal Manual, 30: Kulakan/Beli, 40: Penjualan Kasir, 50: Retur, 60: Pelunasan
+      const priorityA = Number(a.priority) || 35;
+      const priorityB = Number(b.priority) || 35;
+      if (priorityA !== priorityB) return priorityA - priorityB;
+
+      // 3. Jika tanggal & prioritas sama, urutkan berdasarkan Jam / Waktu Input Transaksi (createdAt)
+      const timeA = a.createdAt || "";
+      const timeB = b.createdAt || "";
+      if (timeA && timeB && timeA !== timeB) return timeA.localeCompare(timeB);
+
+      // 4. Fallback jika waktu sama: Voucher / ID
       return (a.voucherNo || a.id || "").localeCompare(b.voucherNo || b.id || "");
     });
 
