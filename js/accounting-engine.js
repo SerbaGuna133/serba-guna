@@ -465,18 +465,12 @@ class AccountingEngine {
       const dateB = b.date || "";
       if (dateA !== dateB) return dateA.localeCompare(dateB);
 
-      // 2. Jika tanggal sama, urutkan berdasarkan Prioritas Akuntansi:
-      //    10: Saldo Awal Persediaan (Modal), 15: Modal Awal Manual, 30: Kulakan/Beli, 40: Penjualan Kasir, 50: Retur, 60: Pelunasan
-      const priorityA = Number(a.priority) || 35;
-      const priorityB = Number(b.priority) || 35;
-      if (priorityA !== priorityB) return priorityA - priorityB;
-
-      // 3. Jika tanggal & prioritas sama, urutkan berdasarkan Jam / Waktu Input Transaksi (createdAt)
-      const timeA = a.createdAt || "";
-      const timeB = b.createdAt || "";
+      // 2. Jika tanggal sama, urutkan murni sesuai Waktu / Jam Transaksi (createdAt / Jam Input)
+      const timeA = a.createdAt || (a.date ? `${a.date}T00:00:00` : "");
+      const timeB = b.createdAt || (b.date ? `${b.date}T00:00:00` : "");
       if (timeA && timeB && timeA !== timeB) return timeA.localeCompare(timeB);
 
-      // 4. Fallback jika waktu sama: Voucher / ID
+      // 3. Fallback jika waktu sama: Nomor Voucher / ID
       return (a.voucherNo || a.id || "").localeCompare(b.voucherNo || b.id || "");
     });
 
