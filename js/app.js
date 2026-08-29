@@ -2263,7 +2263,7 @@ class AppController {
     const video = document.getElementById('pureCameraVideo');
     if (inp) inp.value = '';
 
-    if (status) status.textContent = "Menghubungkan kamera HP...";
+    if (status) status.textContent = "Menghubungkan kamera...";
 
     this.stopCameraStream();
     this.isCameraScanning = true;
@@ -2274,18 +2274,40 @@ class AppController {
       return;
     }
 
+    let stream = null;
+    const facing = this.cameraFacingMode || "environment";
+
+    // 1. Coba sambungkan dengan mode kamera belakang / depan ideal
     try {
-      const facing = this.cameraFacingMode || "environment";
-      const constraints = {
+      stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: facing },
           width: { ideal: 1280 },
           height: { ideal: 720 }
         },
         audio: false
-      };
+      });
+    } catch (e1) {
+      // 2. Fallback universal untuk webcam Laptop / PC / browser ketat
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      } catch (e2) {
+        console.warn("Gagal membuka kamera:", e2);
+        if (status) {
+          status.innerHTML = `
+            <div style="color: #ef4444; font-weight: 700; font-size: 0.82rem; line-height: 1.4;">
+              ⚠️ Akses kamera terhalang / belum diizinkan.<br>
+              <span style="color: var(--text-muted); font-size: 0.76rem; font-weight: normal;">
+                💡 <b>Cara Buka Izin Kamera:</b> Klik ikon <b>🔒 Gembok</b> / <b>📷 Kamera</b> di samping kiri alamat browser, ubah <b>Kamera</b> menjadi <b>Izinkan (Allow)</b>, lalu muat ulang halaman.
+              </span>
+            </div>
+          `;
+        }
+        return;
+      }
+    }
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    try {
       this.cameraStream = stream;
       if (video) {
         video.srcObject = stream;
@@ -2296,10 +2318,10 @@ class AppController {
       if (status) status.textContent = "✅ Kamera aktif! Arahkan barcode ke kotak bidik di atas.";
 
       this.runBarcodeScanningLoop();
-    } catch (err) {
-      console.warn("Gagal membuka kamera:", err);
+    } catch (playErr) {
+      console.warn("Gagal memutar video kamera:", playErr);
       if (status) {
-        status.innerHTML = `<span style="color: #ef4444; font-weight: 700;">⚠️ Akses kamera gagal: ${err.message}. Pastikan izin kamera telah diizinkan di browser HP Anda.</span>`;
+        status.innerHTML = `<span style="color: #ef4444; font-weight: 700;">⚠️ Gagal memutar video kamera: ${playErr.message}</span>`;
       }
     }
   }
