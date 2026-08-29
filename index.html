@@ -1369,6 +1369,42 @@
             </div>
           </div>
 
+          <!-- Live Profit & Smart Margin / HET Analyzer -->
+          <div id="modalProdProfitBox" style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-top: -0.25rem; margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.6rem;">
+              <div>
+                <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px;">💰 Analisa Keuntungan per Produk:</div>
+                <div id="modalProdProfitDisplay" style="font-size: 1.05rem; font-weight: 800; color: var(--success); margin-top: 0.1rem;">
+                  Laba: Rp 0 <span style="font-size: 0.82rem; font-weight: 700; opacity: 0.85;">(+0% Markup)</span>
+                </div>
+              </div>
+              <div id="modalProdProfitBadge">
+                <span class="badge badge-gray" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;">Masukkan harga</span>
+              </div>
+            </div>
+
+            <!-- Smart HET / Price Suggestions -->
+            <div style="border-top: 1px dashed var(--border-color); padding-top: 0.6rem;">
+              <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.4rem;">
+                💡 Saran Rekomendasi Harga Toko (Klik untuk Pasang Otomatis):
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.45rem;" id="modalProdHETButtons">
+                <button type="button" class="btn btn-outline btn-xs btn-het-preset" data-pct="15" style="display: flex; flex-direction: column; align-items: center; padding: 0.4rem 0.5rem; text-align: center; border-color: rgba(16, 185, 129, 0.4);" title="Klik untuk pasang harga">
+                  <span style="font-size: 0.68rem; color: var(--text-muted);">🟢 Grosir / Cepat (+15%)</span>
+                  <strong style="color: var(--success); font-size: 0.85rem;" class="het-price-val">Rp 0</strong>
+                </button>
+                <button type="button" class="btn btn-outline btn-xs btn-het-preset" data-pct="25" style="display: flex; flex-direction: column; align-items: center; padding: 0.4rem 0.5rem; text-align: center; border-color: rgba(59, 130, 246, 0.4);" title="Klik untuk pasang harga">
+                  <span style="font-size: 0.68rem; color: var(--text-muted);">🔵 Standar Toko (+25%)</span>
+                  <strong style="color: var(--info); font-size: 0.85rem;" class="het-price-val">Rp 0</strong>
+                </button>
+                <button type="button" class="btn btn-outline btn-xs btn-het-preset" data-pct="35" style="display: flex; flex-direction: column; align-items: center; padding: 0.4rem 0.5rem; text-align: center; border-color: rgba(245, 158, 11, 0.4);" title="Klik untuk pasang harga">
+                  <span style="font-size: 0.68rem; color: var(--text-muted);">⭐ Saran HET Eceran (+35%)</span>
+                  <strong style="color: var(--warning); font-size: 0.85rem;" class="het-price-val">Rp 0</strong>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label">Jumlah Stok Awal:</label>

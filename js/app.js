@@ -1996,6 +1996,7 @@ class AppController {
     const sellPrice = parseFloat(document.getElementById('modalProdSellPrice')?.value) || 0;
     const stock = parseFloat(document.getElementById('modalProdStock')?.value) || 0;
 
+    // 1. Nilai Total Aset Masuk & Omzet Retail
     const totalAsset = buyPrice * stock;
     const totalRetail = sellPrice * stock;
 
@@ -2004,6 +2005,92 @@ class AppController {
 
     if (elAsset) elAsset.textContent = this.store.formatRupiah(totalAsset);
     if (elRetail) elRetail.textContent = this.store.formatRupiah(totalRetail);
+
+    // 2. Live Analisa Keuntungan per Produk & Persentase Margin
+    const elProfitDisplay = document.getElementById('modalProdProfitDisplay');
+    const elProfitBadge = document.getElementById('modalProdProfitBadge');
+
+    if (elProfitDisplay && elProfitBadge) {
+      if (buyPrice <= 0 && sellPrice <= 0) {
+        elProfitDisplay.innerHTML = `<span style="color: var(--text-muted);">Laba: Rp 0 (0%)</span>`;
+        elProfitBadge.innerHTML = `<span class="badge badge-gray">Ketik harga modal & jual</span>`;
+      } else if (buyPrice > 0 && sellPrice <= 0) {
+        elProfitDisplay.innerHTML = `<span style="color: var(--warning); font-size: 0.88rem;">⚠️ Tentukan harga jual kasir di samping</span>`;
+        elProfitBadge.innerHTML = `<span class="badge badge-warning">Belum diatur</span>`;
+      } else {
+        const profitNominal = sellPrice - buyPrice;
+        const markupPct = buyPrice > 0 ? ((profitNominal / buyPrice) * 100).toFixed(1) : 100;
+        const marginPct = sellPrice > 0 ? ((profitNominal / sellPrice) * 100).toFixed(1) : 0;
+
+        if (profitNominal < 0) {
+          elProfitDisplay.innerHTML = `
+            <span style="color: #ef4444; font-weight: 800;">
+              ⚠️ RUGI: -${this.store.formatRupiah(Math.abs(profitNominal))} / unit 
+              <span style="font-size: 0.8rem; font-weight: 600;">(${markupPct}%)</span>
+            </span>
+          `;
+          elProfitBadge.innerHTML = `<span class="badge badge-danger">⚠️ Jual di Bawah Modal</span>`;
+        } else if (profitNominal === 0) {
+          elProfitDisplay.innerHTML = `
+            <span style="color: var(--warning); font-weight: 700;">
+              Laba: Rp 0 (Impas / Balik Modal)
+            </span>
+          `;
+          elProfitBadge.innerHTML = `<span class="badge badge-warning">⚖️ Impas (0%)</span>`;
+        } else {
+          let badgeHTML = `<span class="badge badge-success">✅ Margin Ideal</span>`;
+          if (markupPct >= 40) {
+            badgeHTML = `<span class="badge badge-warning">🔥 Margin Tebal (+${markupPct}%)</span>`;
+          } else if (markupPct >= 20) {
+            badgeHTML = `<span class="badge badge-success">✨ Margin Sehat (+${markupPct}%)</span>`;
+          } else if (markupPct >= 10) {
+            badgeHTML = `<span class="badge badge-info">👍 Margin Standar (+${markupPct}%)</span>`;
+          } else {
+            badgeHTML = `<span class="badge badge-gray">📦 Margin Tipis / Komoditas (+${markupPct}%)</span>`;
+          }
+
+          elProfitDisplay.innerHTML = `
+            <span style="color: var(--success); font-weight: 800;">
+              Laba: +${this.store.formatRupiah(profitNominal)} <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">/ unit</span>
+              <span style="font-size: 0.82rem; font-weight: 700; color: var(--info); margin-left: 6px;">(+${markupPct}% Untung | ${marginPct}% Margin)</span>
+            </span>
+          `;
+          elProfitBadge.innerHTML = badgeHTML;
+        }
+      }
+    }
+
+    // 3. Update Saran HET / Rekomendasi Harga Toko Otomatis
+    const roundToNice = (num) => {
+      if (num <= 0) return 0;
+      if (num < 1000) return Math.round(num / 100) * 100;
+      if (num < 10000) return Math.round(num / 500) * 500;
+      if (num < 100000) return Math.round(num / 500) * 500;
+      return Math.round(num / 1000) * 1000;
+    };
+
+    const hetBtns = document.querySelectorAll('#modalProdHETButtons .btn-het-preset');
+    hetBtns.forEach(btn => {
+      const pct = parseFloat(btn.getAttribute('data-pct')) || 15;
+      const targetVal = buyPrice > 0 ? roundToNice(buyPrice * (1 + (pct / 100))) : 0;
+      const valEl = btn.querySelector('.het-price-val');
+      if (valEl) {
+        valEl.textContent = this.store.formatRupiah(targetVal);
+      }
+      btn.onclick = (e) => {
+        e.preventDefault();
+        if (targetVal > 0) {
+          const sellInp = document.getElementById('modalProdSellPrice');
+          if (sellInp) {
+            sellInp.value = targetVal;
+            this.recalculateProductModalAsset();
+            this.showToast(`Harga jual kasir dipasang ke saran ${this.store.formatRupiah(targetVal)} (+${pct}%)`);
+          }
+        } else {
+          this.showToast("Silakan isi Harga Modal (Beli) terlebih dahulu.", "warning");
+        }
+      };
+    });
   }
 
   toggleMultiUnitFields() {
