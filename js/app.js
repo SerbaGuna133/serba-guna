@@ -2578,25 +2578,68 @@ class AppController {
     }
   }
 
+  updateCOADatalist() {
+    const dl = document.getElementById('datalistCOAAccounts');
+    if (!dl || !this.accounting) return;
+    dl.innerHTML = this.accounting.coa.map(a => `<option value="${a.code} - ${a.name}"></option>`).join('');
+  }
+
   addJournalLineRow(accountCode = '', debit = 0, credit = 0, desc = '') {
     const container = document.getElementById('journalLinesContainer');
     if (!container) return;
 
+    this.updateCOADatalist();
+
+    const acc = this.accounting.coa.find(a => a.code === accountCode);
+    const initialText = acc ? `${acc.code} - ${acc.name}` : (accountCode ? accountCode : '');
+
     const row = document.createElement('div');
     row.className = 'items-builder-row';
-    row.style.gridTemplateColumns = '2fr 1fr 1fr 1.5fr auto';
+    row.style.gridTemplateColumns = '2.2fr 1fr 1fr 1.5fr auto';
 
     row.innerHTML = `
-      <select class="form-control jrn-account" required>
-        ${this.accounting.coa.map(a => `<option value="${a.code}" ${a.code === accountCode ? 'selected' : ''}>${a.code} - ${a.name}</option>`).join('')}
-      </select>
-      <input type="number" class="form-control jrn-debit" placeholder="Debit" value="${debit}" min="0" step="100" />
-      <input type="number" class="form-control jrn-credit" placeholder="Kredit" value="${credit}" min="0" step="100" />
-      <input type="text" class="form-control jrn-desc" placeholder="Keterangan" value="${desc}" />
+      <div style="position: relative; width: 100%;">
+        <input type="text" class="form-control jrn-account-search font-bold" list="datalistCOAAccounts" placeholder="🔍 Ketik kode / nama akun..." value="${initialText}" required autocomplete="off" />
+        <input type="hidden" class="jrn-account" value="${accountCode || (acc ? acc.code : '')}" />
+      </div>
+      <input type="number" class="form-control jrn-debit" placeholder="Debit (Rp)" value="${debit || ''}" min="0" step="100" />
+      <input type="number" class="form-control jrn-credit" placeholder="Kredit (Rp)" value="${credit || ''}" min="0" step="100" />
+      <input type="text" class="form-control jrn-desc" placeholder="Keterangan baris" value="${desc || ''}" />
       <button type="button" class="btn-icon-only text-danger btn-remove-jrn-line" title="Hapus">✕</button>
     `;
 
-    row.querySelectorAll('input, select').forEach(inp => {
+    const searchInp = row.querySelector('.jrn-account-search');
+    const hiddenCode = row.querySelector('.jrn-account');
+
+    const syncAccountCode = () => {
+      const val = (searchInp.value || '').trim();
+      if (!val) {
+        hiddenCode.value = '';
+        return;
+      }
+      const match = val.match(/^(\d{4})/);
+      if (match) {
+        hiddenCode.value = match[1];
+      } else {
+        const found = this.accounting.coa.find(a => a.name.toLowerCase().includes(val.toLowerCase()) || a.code.includes(val));
+        if (found) {
+          hiddenCode.value = found.code;
+        } else {
+          hiddenCode.value = val;
+        }
+      }
+    };
+
+    searchInp.addEventListener('input', () => {
+      syncAccountCode();
+      this.recalculateJournalModal();
+    });
+    searchInp.addEventListener('change', () => {
+      syncAccountCode();
+      this.recalculateJournalModal();
+    });
+
+    row.querySelectorAll('input').forEach(inp => {
       inp.addEventListener('input', () => this.recalculateJournalModal());
       inp.addEventListener('change', () => this.recalculateJournalModal());
     });
@@ -3244,7 +3287,19 @@ class AppController {
   handleSaveManualJournal() {
     const lines = [];
     document.querySelectorAll('#journalLinesContainer .items-builder-row').forEach(row => {
-      const accountCode = row.querySelector('.jrn-account')?.value;
+      let accountCode = row.querySelector('.jrn-account')?.value;
+      const searchVal = (row.querySelector('.jrn-account-search')?.value || '').trim();
+
+      if (!accountCode && searchVal) {
+        const match = searchVal.match(/^(\d{4})/);
+        if (match) {
+          accountCode = match[1];
+        } else {
+          const found = this.accounting.coa.find(a => a.name.toLowerCase().includes(searchVal.toLowerCase()) || a.code.includes(searchVal));
+          if (found) accountCode = found.code;
+        }
+      }
+
       const debit = parseFloat(row.querySelector('.jrn-debit')?.value) || 0;
       const credit = parseFloat(row.querySelector('.jrn-credit')?.value) || 0;
       const desc = row.querySelector('.jrn-desc')?.value.trim();
