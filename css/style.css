@@ -1212,11 +1212,11 @@ button, input, select, textarea {
 #html5QrcodeReader {
   width: 100% !important;
   max-width: 100% !important;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: #000000;
+  border-radius: var(--radius-md) !important;
+  overflow: hidden !important;
+  background: #000000 !important;
   position: relative !important;
-  margin: 0 auto;
+  margin: 0 auto !important;
   border: none !important;
 }
 
@@ -1225,29 +1225,28 @@ button, input, select, textarea {
   height: auto !important;
   max-height: 320px !important;
   object-fit: cover !important;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) !important;
   display: block !important;
   margin: 0 auto !important;
 }
 
-#html5QrcodeReader canvas {
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  pointer-events: none !important;
-  border-radius: var(--radius-md);
+/* Sembunyikan canvas internal library agar hanya tampil 1 video murni */
+#html5QrcodeReader canvas,
+#html5QrcodeReader__scan_region canvas,
+#qr-shaded-region {
+  display: none !important;
 }
 
 #html5QrcodeReader__scan_region {
   position: relative !important;
   width: 100% !important;
   margin: 0 auto !important;
+  border: none !important;
 }
 
 #html5QrcodeReader__header_message,
-#html5QrcodeReader__dashboard_section_csr {
+#html5QrcodeReader__dashboard_section_csr,
+#html5QrcodeReader__status_span {
   display: none !important;
 }
 
