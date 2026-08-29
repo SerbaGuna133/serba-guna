@@ -45,15 +45,39 @@ class AppController {
     const isAuthed = this.checkAuthStatus();
 
     if (this.firebase.config) {
-      await this.firebase.init();
-      this.firebase.listenToTransactions(
-        (cloudData) => {
-          this.store.updateFromCloud(cloudData);
-          this.refreshCurrentView();
-          this.showToast("Data tersinkronisasi dari Cloud Firebase!", "info");
-        },
-        (err) => console.warn("Listener cloud error:", err)
-      );
+      const ok = await this.firebase.init();
+      if (ok) {
+        // 1. Sync Transaksi Realtime
+        this.firebase.listenToTransactions(
+          (cloudData) => {
+            this.store.updateFromCloud(cloudData);
+            this.refreshCurrentView();
+          },
+          (err) => console.warn("Listener cloud transactions error:", err)
+        );
+
+        // 2. Sync Master Barang & Stok Realtime
+        this.firebase.listenToProducts(
+          (cloudProducts) => {
+            if (this.inventory) {
+              this.inventory.updateFromCloud(cloudProducts);
+              this.renderInventoryView();
+            }
+          },
+          (err) => console.warn("Listener cloud products error:", err)
+        );
+
+        // 3. Sync Profil Toko & Pengaturan Realtime
+        this.firebase.listenToSettings(
+          (cloudSettings) => {
+            if (cloudSettings && cloudSettings.profile) {
+              this.store.saveStoreProfile(cloudSettings.profile);
+              this.updateStoreProfileHeader();
+            }
+          },
+          (err) => console.warn("Listener cloud settings error:", err)
+        );
+      }
     }
 
     this.updateCloudStatusBadge();
@@ -3155,8 +3179,11 @@ class AppController {
     };
 
     if (this.store.saveStoreProfile(profile)) {
+      if (this.firebase && this.firebase.isCloudActive) {
+        this.firebase.saveSettings({ profile });
+      }
       this.updateStoreProfileHeader();
-      this.showToast("Profil Toko Bangunan berhasil diperbarui!");
+      this.showToast("Profil Toko Bangunan berhasil diperbarui & disinkronkan ke Cloud!");
     }
   }
 

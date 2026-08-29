@@ -161,6 +161,10 @@ class InventoryStore {
     this.products.push(newProduct);
     this.logStockMovement(newProduct.id, newProduct.stock, 'in', 'Inisialisasi Master Barang Baru');
     this.save();
+
+    if (window.firebaseService && window.firebaseService.isCloudActive) {
+      window.firebaseService.saveProduct(newProduct);
+    }
     return newProduct;
   }
 
@@ -186,6 +190,10 @@ class InventoryStore {
 
     this.products[idx] = updated;
     this.save();
+
+    if (window.firebaseService && window.firebaseService.isCloudActive) {
+      window.firebaseService.saveProduct(updated);
+    }
     return updated;
   }
 
@@ -194,7 +202,23 @@ class InventoryStore {
     if (idx === -1) return false;
     this.products.splice(idx, 1);
     this.save();
+
+    if (window.firebaseService && window.firebaseService.isCloudActive) {
+      window.firebaseService.deleteProduct(id);
+    }
     return true;
+  }
+
+  updateFromCloud(cloudProducts) {
+    if (!cloudProducts || !Array.isArray(cloudProducts)) return;
+    if (cloudProducts.length === 0 && this.products.length > 0) {
+      if (window.firebaseService && window.firebaseService.isCloudActive) {
+        window.firebaseService.uploadLocalProducts(this.products);
+      }
+      return;
+    }
+    this.products = cloudProducts;
+    this.save();
   }
 
   getProductUnits(product) {
@@ -233,6 +257,10 @@ class InventoryStore {
 
     this.logStockMovement(id, Math.abs(diff), diff >= 0 ? 'in' : 'out', reason);
     this.save();
+
+    if (window.firebaseService && window.firebaseService.isCloudActive) {
+      window.firebaseService.saveProduct(p);
+    }
     return p;
   }
 
@@ -251,6 +279,10 @@ class InventoryStore {
 
         const unitLabel = item.unit ? `${qty} ${item.unit}` : `${qty} ${product.unit}`;
         this.logStockMovement(product.id, totalBaseQty, 'out', `Penjualan Nota #${txId} (${unitLabel})`);
+
+        if (window.firebaseService && window.firebaseService.isCloudActive) {
+          window.firebaseService.saveProduct(product);
+        }
       }
     });
 
@@ -281,6 +313,10 @@ class InventoryStore {
         product.updatedAt = new Date().toISOString();
         const unitLabel = item.unit ? `${qty} ${item.unit}` : `${qty} ${product.unit}`;
         this.logStockMovement(product.id, totalBaseQty, 'in', `Kulakan Distributor Faktur #${txId} (${unitLabel})`);
+
+        if (window.firebaseService && window.firebaseService.isCloudActive) {
+          window.firebaseService.saveProduct(product);
+        }
       } else if (item.name && qty > 0) {
         // Otomatis daftarkan barang baru jika belum terdaftar di master
         const newProd = {
@@ -302,6 +338,10 @@ class InventoryStore {
         };
         this.products.push(newProd);
         this.logStockMovement(newProd.id, totalBaseQty, 'in', `Kulakan Masuk (Item Baru) Faktur #${txId}`);
+
+        if (window.firebaseService && window.firebaseService.isCloudActive) {
+          window.firebaseService.saveProduct(newProd);
+        }
       }
     });
 

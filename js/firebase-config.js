@@ -29,6 +29,10 @@ class FirebaseService {
     this.isCloudActive = false;
     this.unsubscribeListener = null;
     this.collectionName = "tb_serbaguna_transactions";
+    this.productsCollectionName = "tb_serbaguna_products";
+    this.settingsCollectionName = "tb_serbaguna_settings";
+    this.unsubscribeProdListener = null;
+    this.unsubscribeSettingsListener = null;
     this.config = this.getSavedConfig() || DEFAULT_FIREBASE_CONFIG;
   }
 
@@ -65,6 +69,14 @@ class FirebaseService {
     if (this.unsubscribeListener) {
       this.unsubscribeListener();
       this.unsubscribeListener = null;
+    }
+    if (this.unsubscribeProdListener) {
+      this.unsubscribeProdListener();
+      this.unsubscribeProdListener = null;
+    }
+    if (this.unsubscribeSettingsListener) {
+      this.unsubscribeSettingsListener();
+      this.unsubscribeSettingsListener = null;
     }
     this.notifyStatusChange(false, "Beralih ke mode offline lokal");
   }
@@ -124,7 +136,7 @@ class FirebaseService {
     window.dispatchEvent(event);
   }
 
-  // Pasang Real-Time Listener
+  // ==================== 1. TRANSAKSI REAL-TIME ====================
   listenToTransactions(onDataChanged, onError) {
     if (this.unsubscribeListener) {
       this.unsubscribeListener();
@@ -162,11 +174,8 @@ class FirebaseService {
     }
   }
 
-  // Tambah atau Update transaksi di Cloud
   async saveTransaction(transaction) {
-    if (!this.isCloudActive || !this.db) {
-      return false;
-    }
+    if (!this.isCloudActive || !this.db) return false;
     try {
       const docRef = this.db.collection(this.collectionName).doc(transaction.id);
       await docRef.set(transaction, { merge: true });
@@ -177,11 +186,8 @@ class FirebaseService {
     }
   }
 
-  // Hapus transaksi dari Cloud
   async deleteTransaction(transactionId) {
-    if (!this.isCloudActive || !this.db) {
-      return false;
-    }
+    if (!this.isCloudActive || !this.db) return false;
     try {
       await this.db.collection(this.collectionName).doc(transactionId).delete();
       return true;
@@ -191,11 +197,8 @@ class FirebaseService {
     }
   }
 
-  // Upload masal data lokal ke Cloud Firebase
   async uploadLocalBatch(localTransactions) {
-    if (!this.isCloudActive || !this.db) {
-      throw new Error("Firebase belum terhubung!");
-    }
+    if (!this.isCloudActive || !this.db) return false;
     const batch = this.db.batch();
     localTransactions.forEach(tx => {
       const ref = this.db.collection(this.collectionName).doc(tx.id);
@@ -203,6 +206,120 @@ class FirebaseService {
     });
     await batch.commit();
     return true;
+  }
+
+  // ==================== 2. MASTER BARANG & STOK REAL-TIME ====================
+  listenToProducts(onDataChanged, onError) {
+    if (this.unsubscribeProdListener) {
+      this.unsubscribeProdListener();
+      this.unsubscribeProdListener = null;
+    }
+
+    if (!this.isCloudActive || !this.db) return null;
+
+    try {
+      this.unsubscribeProdListener = this.db.collection(this.productsCollectionName)
+        .onSnapshot(
+          (snapshot) => {
+            const products = [];
+            snapshot.forEach((doc) => {
+              const data = doc.data();
+              products.push({
+                ...data,
+                id: doc.id
+              });
+            });
+            if (onDataChanged) onDataChanged(products);
+          },
+          (error) => {
+            console.error("Error listener Firestore products:", error);
+            if (onError) onError(error);
+          }
+        );
+      return this.unsubscribeProdListener;
+    } catch (err) {
+      console.error("Gagal membuat listener Firestore products:", err);
+      return null;
+    }
+  }
+
+  async saveProduct(product) {
+    if (!this.isCloudActive || !this.db) return false;
+    try {
+      const docRef = this.db.collection(this.productsCollectionName).doc(product.id);
+      await docRef.set(product, { merge: true });
+      return true;
+    } catch (err) {
+      console.error("Gagal menyimpan produk ke Cloud:", err);
+      return false;
+    }
+  }
+
+  async deleteProduct(productId) {
+    if (!this.isCloudActive || !this.db) return false;
+    try {
+      await this.db.collection(this.productsCollectionName).doc(productId).delete();
+      return true;
+    } catch (err) {
+      console.error("Gagal menghapus produk di Cloud:", err);
+      return false;
+    }
+  }
+
+  async uploadLocalProducts(localProducts) {
+    if (!this.isCloudActive || !this.db || !localProducts.length) return false;
+    try {
+      const batch = this.db.batch();
+      localProducts.forEach(p => {
+        const ref = this.db.collection(this.productsCollectionName).doc(p.id);
+        batch.set(ref, p, { merge: true });
+      });
+      await batch.commit();
+      return true;
+    } catch (err) {
+      console.error("Gagal upload batch produk:", err);
+      return false;
+    }
+  }
+
+  // ==================== 3. PENGATURAN & PROFIL TOKO REAL-TIME ====================
+  listenToSettings(onDataChanged, onError) {
+    if (this.unsubscribeSettingsListener) {
+      this.unsubscribeSettingsListener();
+      this.unsubscribeSettingsListener = null;
+    }
+
+    if (!this.isCloudActive || !this.db) return null;
+
+    try {
+      this.unsubscribeSettingsListener = this.db.collection(this.settingsCollectionName).doc("store_profile")
+        .onSnapshot(
+          (doc) => {
+            if (doc.exists) {
+              if (onDataChanged) onDataChanged(doc.data());
+            }
+          },
+          (error) => {
+            console.error("Error listener settings Firestore:", error);
+            if (onError) onError(error);
+          }
+        );
+      return this.unsubscribeSettingsListener;
+    } catch (err) {
+      console.error("Gagal membuat listener settings:", err);
+      return null;
+    }
+  }
+
+  async saveSettings(settingsData) {
+    if (!this.isCloudActive || !this.db) return false;
+    try {
+      await this.db.collection(this.settingsCollectionName).doc("store_profile").set(settingsData, { merge: true });
+      return true;
+    } catch (err) {
+      console.error("Gagal menyimpan settings ke Cloud:", err);
+      return false;
+    }
   }
 }
 
